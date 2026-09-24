@@ -67,6 +67,7 @@ cp .env.example .env
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | frontend (build) et serveur | oui |
 | `VITE_SUPABASE_ANON_KEY` | frontend (build) | oui (lecture seule) |
+| `VITE_GOOGLE_SHEET_URL` | frontend (build), bouton « Google Sheets » masqué si vide | oui |
 | `SUPABASE_SERVICE_ROLE_KEY` | serveur | **non** |
 | `PORT` | serveur (défaut `3000`) | — |
 

@@ -24,7 +24,9 @@ import './App.css'
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`
 
-const DEFAULT_FILTERS = { status: 'all', type: 'all', responsible: 'all', sortDirection: 'desc' }
+const GOOGLE_SHEET_URL = import.meta.env.VITE_GOOGLE_SHEET_URL
+
+const DEFAULT_FILTERS ={ status: 'all', type: 'all', responsible: 'all', sortDirection: 'desc' }
 
 function App() {
   const { anomalies, loading, error, refetch, resolveAnomaly } = useAnomalies()
@@ -209,6 +211,21 @@ function App() {
           </a>
 
           <div className="topbar-actions">
+            {GOOGLE_SHEET_URL && (
+              <a className="button" href={GOOGLE_SHEET_URL} target="_blank" rel="noopener noreferrer">
+                <svg className="button-icon" viewBox="0 0 16 16" aria-hidden="true">
+                  <path
+                    d="M9 2.5h4.5V7M13.5 2.5 7.5 8.5M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Google Sheets
+              </a>
+            )}
             <button type="button" className="button" onClick={refetch} disabled={loading}>
               <svg className="button-icon" viewBox="0 0 16 16" aria-hidden="true">
                 <path
