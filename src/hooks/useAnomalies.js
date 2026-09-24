@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ANOMALY_COLUMNS } from '../lib/anomalyColumns'
-import { supabase } from '../lib/supabaseClient'
+import { supabase, supabaseAuth } from '../lib/supabaseClient'
 
 const RESOLVE_ENDPOINT = '/api/resolve-anomaly'
 
@@ -20,29 +20,23 @@ async function fetchAnomalies() {
   return data ?? []
 }
 
-/** Erreur d'API portant le code HTTP (401 = mot de passe refusé). */
-export class ApiError extends Error {
-  constructor(message, status) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-  }
-}
+async function postResolveAnomaly(id) {
+  const { data } = (await supabaseAuth?.auth.getSession()) ?? {}
+  const accessToken = data?.session?.access_token
+  if (!accessToken) throw new Error('Connectez-vous pour résoudre une anomalie.')
 
-async function postResolveAnomaly(id, password) {
   const response = await fetch(RESOLVE_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      // Encodé : un en-tête HTTP n'accepte pas tous les caractères (accents, €…).
-      'X-Admin-Password': encodeURIComponent(password),
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({ id }),
   })
 
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new ApiError(payload?.error ?? `Erreur serveur (${response.status})`, response.status)
+    throw new Error(payload?.error ?? `Erreur serveur (${response.status})`)
   }
   return payload.anomaly
 }
@@ -84,7 +78,7 @@ export function useAnomalies() {
    * Mise à jour optimiste, annulée si l'appel échoue (l'erreur est relancée
    * pour que l'appelant puisse l'afficher).
    */
-  const resolveAnomaly = useCallback(async (id, password) => {
+  const resolveAnomaly = useCallback(async (id) => {
     const optimisticResolvedAt = new Date().toISOString()
     const patch = (changes) =>
       setAnomalies((current) => current.map((a) => (a.id === id ? { ...a, ...changes } : a)))
@@ -92,7 +86,7 @@ export function useAnomalies() {
     patch({ resolved: true, resolved_at: optimisticResolvedAt })
 
     try {
-      const updated = await postResolveAnomaly(id, password)
+      const updated = await postResolveAnomaly(id)
       if (updated) patch(updated)
     } catch (err) {
       patch({ resolved: false, resolved_at: null })

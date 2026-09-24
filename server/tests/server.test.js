@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../app.js'
-import { createFailureLimiter, passwordsMatch } from '../auth.js'
+import { createFailureLimiter } from '../auth.js'
 
-const PASSWORD = 'correct horse – battery staple'
+const VALID_TOKEN = 'valid.jwt.token'
 
-/** Faux client Supabase : enregistre l'update et renvoie `result`. */
+/** Faux client Supabase : n'accepte que VALID_TOKEN, enregistre l'update et renvoie `result`. */
 function fakeSupabase(result) {
   const calls = []
   const builder = {
@@ -24,7 +24,13 @@ function fakeSupabase(result) {
     },
     maybeSingle: async () => result,
   }
-  return { client: { from: () => builder }, calls }
+  const auth = {
+    getUser: async (token) =>
+      token === VALID_TOKEN
+        ? { data: { user: { id: 'u1', email: 'admin@example.com' } }, error: null }
+        : { data: { user: null }, error: { message: 'invalid JWT' } },
+  }
+  return { client: { from: () => builder, auth }, calls }
 }
 
 let distDir
@@ -35,15 +41,15 @@ let limiter
 
 async function start(options) {
   if (server) await new Promise((resolve) => server.close(resolve))
-  const app = createApp({ distDir, adminPassword: PASSWORD, supabase: supabase.client, limiter, ...options })
+  const app = createApp({ distDir, supabase: supabase.client, limiter, ...options })
   server = app.listen(0, '127.0.0.1')
   await new Promise((resolve) => server.once('listening', resolve))
   baseUrl = `http://127.0.0.1:${server.address().port}`
 }
 
-function resolveRequest(body, password = PASSWORD) {
+function resolveRequest(body, authorization = `Bearer ${VALID_TOKEN}`) {
   const headers = { 'Content-Type': 'application/json' }
-  if (password !== null) headers['X-Admin-Password'] = encodeURIComponent(password)
+  if (authorization !== null) headers.Authorization = authorization
   return fetch(`${baseUrl}/api/resolve-anomaly`, { method: 'POST', headers, body })
 }
 
@@ -68,23 +74,8 @@ afterAll(async () => {
   rmSync(distDir, { recursive: true, force: true })
 })
 
-describe('passwordsMatch', () => {
-  it('accepts the exact password only', () => {
-    expect(passwordsMatch('secret', 'secret')).toBe(true)
-    expect(passwordsMatch('Secret', 'secret')).toBe(false)
-    expect(passwordsMatch('secret ', 'secret')).toBe(false)
-    expect(passwordsMatch('', 'secret')).toBe(false)
-    expect(passwordsMatch(null, 'secret')).toBe(false)
-  })
-
-  it('never matches when no password is configured', () => {
-    expect(passwordsMatch('', '')).toBe(false)
-    expect(passwordsMatch('x', undefined)).toBe(false)
-  })
-})
-
 describe('POST /api/resolve-anomaly', () => {
-  it('resolves the anomaly with the right password', async () => {
+  it('resolves the anomaly for a signed-in user', async () => {
     const response = await resolveRequest('{"id":1}')
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ anomaly: { id: 1, resolved: true } })
@@ -92,32 +83,27 @@ describe('POST /api/resolve-anomaly', () => {
     expect(supabase.calls).toContainEqual({ eq: ['id', 1] })
   })
 
-  it('supports non-ASCII passwords', async () => {
-    await start({ adminPassword: 'pièce-détachée€' })
-    expect((await resolveRequest('{"id":1}', 'pièce-détachée€')).status).toBe(200)
-  })
-
   it.each([
-    ['missing', null],
-    ['wrong', 'nope'],
-  ])('rejects a %s password with 401 without touching the database', async (_label, password) => {
-    const response = await resolveRequest('{"id":1}', password)
+    ['missing header', null],
+    ['non-bearer scheme', 'Basic dXNlcjpwYXNz'],
+    ['empty bearer', 'Bearer '],
+    ['invalid token', 'Bearer forged.jwt.token'],
+  ])('rejects a %s with 401 without touching the database', async (_label, authorization) => {
+    const response = await resolveRequest('{"id":1}', authorization)
     expect(response.status).toBe(401)
     expect(supabase.calls).toEqual([])
   })
 
-  it('blocks an IP after repeated failures', async () => {
-    for (let i = 0; i < 5; i += 1) await resolveRequest('{"id":1}', 'nope')
+  it('blocks an IP after repeated invalid tokens', async () => {
+    for (let i = 0; i < 5; i += 1) await resolveRequest('{"id":1}', 'Bearer forged')
     const response = await resolveRequest('{"id":1}')
     expect(response.status).toBe(429)
     expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0)
   })
 
-  it('fails closed when ADMIN_PASSWORD is not configured', async () => {
-    await start({ adminPassword: undefined })
-    const response = await resolveRequest('{"id":1}', '')
-    expect(response.status).toBe(500)
-    expect(supabase.calls).toEqual([])
+  it('returns 500 when the server has no Supabase configuration', async () => {
+    await start({ supabase: null })
+    expect((await resolveRequest('{"id":1}')).status).toBe(500)
   })
 
   it.each([

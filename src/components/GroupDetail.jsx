@@ -37,6 +37,7 @@ export default function GroupDetail({
   filters,
   filterBarProps,
   tableProps,
+  notice,
   onNavigate,
 }) {
   const visibleAnomalies = useMemo(
@@ -80,6 +81,8 @@ export default function GroupDetail({
         </h2>
 
         <FilterBar {...filterBarProps} resultCount={visibleAnomalies.length} resultLabel={(count) => `${count} sur ${group.total}`} />
+
+        {notice}
 
         <AnomalyTable anomalies={visibleAnomalies} sortDirection={filters.sortDirection} {...tableProps} />
       </section>

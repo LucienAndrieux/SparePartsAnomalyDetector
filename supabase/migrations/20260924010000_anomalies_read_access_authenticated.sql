@@ -1,8 +1,8 @@
 -- Rôle `authenticated` (utilisateurs Supabase Auth) : même accès en lecture que `anon`.
--- Le dashboard n'utilise plus Supabase Auth (il lit toujours en `anon`) ; ces droits
+-- Le dashboard lit toujours avec un client anonyme, même connecté ; ces droits
 -- restent cohérents si un client connecté interroge la table.
 -- Toujours aucune écriture directe : la résolution passe par l'API du serveur
--- (POST /api/resolve-anomaly), protégée par ADMIN_PASSWORD.
+-- (POST /api/resolve-anomaly), qui vérifie la session Supabase de l'utilisateur.
 
 revoke select on table public.anomalies from authenticated;
 

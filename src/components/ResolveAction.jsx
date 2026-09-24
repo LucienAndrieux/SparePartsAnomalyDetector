@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { PasswordPromptCancelled } from '../hooks/useAdminSession'
 
 export default function ResolveAction({ anomalyId, onResolve }) {
   const [pending, setPending] = useState(false)
@@ -11,7 +10,7 @@ export default function ResolveAction({ anomalyId, onResolve }) {
     try {
       await onResolve(anomalyId)
     } catch (err) {
-      if (!(err instanceof PasswordPromptCancelled)) setError(err.message)
+      setError(err.message)
     } finally {
       setPending(false)
     }

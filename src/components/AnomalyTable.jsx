@@ -7,6 +7,7 @@ export default function AnomalyTable({
   onResolve,
   showJob = true,
   showResponsible = true,
+  canResolve = false,
 }) {
   if (anomalies.length === 0) {
     return <p className="state-message">Aucune anomalie ne correspond aux filtres sélectionnés.</p>
@@ -31,9 +32,11 @@ export default function AnomalyTable({
             </th>
             {showResponsible && <th scope="col">Resp.</th>}
             <th scope="col">Statut</th>
-            <th scope="col">
-              <span className="visually-hidden">Action</span>
-            </th>
+            {canResolve && (
+              <th scope="col">
+                <span className="visually-hidden">Action</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
@@ -44,6 +47,7 @@ export default function AnomalyTable({
               onResolve={onResolve}
               showJob={showJob}
               showResponsible={showResponsible}
+              canResolve={canResolve}
             />
           ))}
         </tbody>

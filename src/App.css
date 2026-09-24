@@ -181,50 +181,87 @@
 }
 
 /* =========================================================
-   Boîte de dialogue (mot de passe administrateur)
+   Authentification
    ========================================================= */
 
-.dialog {
-  width: min(360px, calc(100vw - 32px));
-  padding: 20px;
-  border: 0;
+.auth-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.auth-email {
+  max-width: 200px;
+  overflow: hidden;
+  color: var(--ink-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popover {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  z-index: 20;
+  width: 320px;
+  padding: 16px;
   border-radius: var(--radius-lg);
   background: var(--surface);
   box-shadow: var(--shadow-popover);
-  color: var(--ink);
 }
 
-.dialog::backdrop {
-  background: rgb(26 31 54 / 35%);
-}
-
-.dialog form {
-  display: flex;
-  flex-direction: column;
-}
-
-.dialog-header {
+.popover-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.dialog-header h2 {
+.popover-header h2 {
   font-size: 15px;
   font-weight: 600;
 }
 
-.dialog-hint {
-  margin: 4px 0 16px;
+.popover-hint {
+  margin: 2px 0 16px;
   color: var(--ink-muted);
   font-size: 13px;
 }
 
-.dialog-actions {
+.login-form {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
+  flex-direction: column;
+}
+
+.login-form .field + .field {
+  margin-top: 12px;
+}
+
+.login-submit {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.notice {
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--brand-soft);
+  color: var(--ink);
+  font-size: 13px;
 }
 
 .field {
@@ -870,8 +907,17 @@ a.responsible-tag:hover {
     padding-bottom: 40px;
   }
 
-  .brand-name {
+  .brand-name,
+  .auth-email {
     display: none;
+  }
+
+  .popover {
+    position: fixed;
+    top: 64px;
+    right: 16px;
+    left: 16px;
+    width: auto;
   }
 
   .page-header {

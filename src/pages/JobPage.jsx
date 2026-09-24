@@ -5,7 +5,7 @@ import Stat from '../components/Stat'
 import { groupAnomaliesByJob } from '../lib/anomalies'
 import { ROUTES } from '../lib/routes'
 
-export default function JobPage({ jobId, anomalies, responsibleOptions, filters, onFiltersChange, tableProps, onNavigate }) {
+export default function JobPage({ jobId, anomalies, responsibleOptions, filters, onFiltersChange, tableProps, notice, onNavigate }) {
   const job = useMemo(
     () => groupAnomaliesByJob(anomalies.filter((anomaly) => anomaly.job_id === jobId))[0] ?? null,
     [anomalies, jobId],
@@ -36,6 +36,7 @@ export default function JobPage({ jobId, anomalies, responsibleOptions, filters,
       filters={filters}
       filterBarProps={{ filters, onChange: onFiltersChange, responsibleOptions }}
       tableProps={{ ...tableProps, showJob: false }}
+      notice={notice}
       onNavigate={onNavigate}
     />
   )

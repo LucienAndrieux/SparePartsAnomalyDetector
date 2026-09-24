@@ -1,21 +1,18 @@
 import { ANOMALY_COLUMNS } from '../src/lib/anomalyColumns.js'
-import { createFailureLimiter, passwordsMatch } from './auth.js'
-
-export const PASSWORD_HEADER = 'x-admin-password'
+import { createFailureLimiter, getBearerToken } from './auth.js'
 
 /**
  * POST /api/resolve-anomaly  —  body: { id }
- * En-tête requis : X-Admin-Password (encodé avec encodeURIComponent côté client,
- * les en-têtes HTTP n'acceptant pas tous les caractères).
+ * En-tête requis : Authorization: Bearer <access token Supabase Auth>
  *
+ * Réservé aux utilisateurs connectés (comptes créés dans Supabase Auth).
  * Marque une anomalie comme résolue avec la clé service_role, qui ne quitte jamais le serveur.
  */
-export function createResolveAnomalyHandler({ supabase, adminPassword, limiter = createFailureLimiter() }) {
+export function createResolveAnomalyHandler({ supabase, limiter = createFailureLimiter() }) {
   return async function resolveAnomaly(req, res) {
-    // Fail closed : sans mot de passe configuré, aucune écriture n'est possible.
-    if (!adminPassword) {
-      console.error('resolve-anomaly: ADMIN_PASSWORD manquant')
-      return res.status(500).json({ error: 'Configuration serveur incomplète' })
+    const token = getBearerToken(req)
+    if (!token) {
+      return res.status(401).json({ error: 'Authentification requise' })
     }
 
     const retryAfter = limiter.retryAfter(req.ip)
@@ -24,27 +21,22 @@ export function createResolveAnomalyHandler({ supabase, adminPassword, limiter =
       return res.status(429).json({ error: 'Trop de tentatives, réessayez plus tard.' })
     }
 
-    let givenPassword
-    try {
-      givenPassword = decodeURIComponent(req.get(PASSWORD_HEADER) ?? '')
-    } catch {
-      givenPassword = null // encodage invalide
+    if (!supabase) {
+      console.error('resolve-anomaly: VITE_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant')
+      return res.status(500).json({ error: 'Configuration serveur incomplète' })
     }
 
-    if (!passwordsMatch(givenPassword, adminPassword)) {
+    // Vérifie le jeton auprès de Supabase Auth (signature, expiration, utilisateur existant).
+    const { data: auth, error: authError } = await supabase.auth.getUser(token)
+    if (authError || !auth?.user) {
       limiter.recordFailure(req.ip)
-      return res.status(401).json({ error: 'Mot de passe incorrect' })
+      return res.status(401).json({ error: 'Session invalide ou expirée, reconnectez-vous' })
     }
     limiter.reset(req.ip)
 
     const id = req.body?.id
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ error: 'Le champ "id" doit être un entier positif' })
-    }
-
-    if (!supabase) {
-      console.error('resolve-anomaly: VITE_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant')
-      return res.status(500).json({ error: 'Configuration serveur incomplète' })
     }
 
     const { data, error } = await supabase
@@ -68,7 +60,7 @@ export function createResolveAnomalyHandler({ supabase, adminPassword, limiter =
         : res.status(404).json({ error: `Anomalie ${id} introuvable` })
     }
 
-    console.info(`resolve-anomaly: anomalie ${id} résolue (${req.ip})`)
+    console.info(`resolve-anomaly: anomalie ${id} résolue par ${auth.user.email ?? auth.user.id}`)
     return res.json({ anomaly: data })
   }
 }

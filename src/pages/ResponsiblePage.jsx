@@ -4,7 +4,7 @@ import Stat from '../components/Stat'
 import { UNASSIGNED, getResponsibleKey, getResponsibleLabel, groupAnomaliesByResponsible } from '../lib/anomalies'
 import { ROUTES } from '../lib/routes'
 
-export default function ResponsiblePage({ responsibleKey, anomalies, filters, onFiltersChange, tableProps, onNavigate }) {
+export default function ResponsiblePage({ responsibleKey, anomalies, filters, onFiltersChange, tableProps, notice, onNavigate }) {
   const group = useMemo(
     () =>
       groupAnomaliesByResponsible(anomalies.filter((anomaly) => getResponsibleKey(anomaly) === responsibleKey))[0] ??
@@ -30,6 +30,7 @@ export default function ResponsiblePage({ responsibleKey, anomalies, filters, on
       filters={pageFilters}
       filterBarProps={{ filters: pageFilters, onChange: onFiltersChange }}
       tableProps={{ ...tableProps, showResponsible: false }}
+      notice={notice}
       onNavigate={onNavigate}
     />
   )

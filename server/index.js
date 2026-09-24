@@ -9,15 +9,12 @@ import { createApp } from './app.js'
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 dotenv.config({ path: resolve(projectRoot, '.env'), quiet: true })
 
-const { VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, ADMIN_PASSWORD } = process.env
+const { VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env
 const port = Number(process.env.PORT) || 3000
 const host = '127.0.0.1' // seul Caddy, sur la même machine, doit joindre le serveur
 
 if (!VITE_SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.warn('VITE_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant : la résolution des anomalies échouera.')
-}
-if (!ADMIN_PASSWORD) {
-  console.warn('ADMIN_PASSWORD manquant : la résolution des anomalies est désactivée.')
 }
 
 const supabase =
@@ -29,7 +26,6 @@ const supabase =
 
 const app = createApp({
   supabase,
-  adminPassword: ADMIN_PASSWORD,
   distDir: resolve(projectRoot, 'dist'),
 })
 

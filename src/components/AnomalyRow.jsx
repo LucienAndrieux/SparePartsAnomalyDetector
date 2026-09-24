@@ -3,7 +3,7 @@ import { jobHref } from '../lib/routes'
 import { ResponsibleTag, StatusBadge, TypeBadge } from './Badges'
 import ResolveAction from './ResolveAction'
 
-export default function AnomalyRow({ anomaly, onResolve, showJob = true, showResponsible = true }) {
+export default function AnomalyRow({ anomaly, onResolve, canResolve, showJob = true, showResponsible = true }) {
   const context = [anomaly.client, anomaly.item, anomaly.supplier].filter(Boolean)
 
   return (
@@ -36,9 +36,11 @@ export default function AnomalyRow({ anomaly, onResolve, showJob = true, showRes
       <td data-label="Statut">
         <StatusBadge anomaly={anomaly} />
       </td>
-      <td data-label="Action" className="cell-action">
-        {!anomaly.resolved && <ResolveAction anomalyId={anomaly.id} onResolve={onResolve} />}
-      </td>
+      {canResolve && (
+        <td data-label="Action" className="cell-action">
+          {!anomaly.resolved && <ResolveAction anomalyId={anomaly.id} onResolve={onResolve} />}
+        </td>
+      )}
     </tr>
   )
 }

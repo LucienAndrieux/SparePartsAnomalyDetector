@@ -7,7 +7,7 @@ import { createResolveAnomalyHandler } from './resolveAnomaly.js'
  * Application Express : API + build Vite statique.
  * Construite par une fonction (dépendances injectées) pour pouvoir être testée.
  */
-export function createApp({ supabase, adminPassword, distDir, limiter }) {
+export function createApp({ supabase, distDir, limiter }) {
   const app = express()
   app.disable('x-powered-by')
   // Caddy tourne sur la même machine : on fait confiance à X-Forwarded-For venant de la boucle locale.
@@ -25,7 +25,7 @@ export function createApp({ supabase, adminPassword, distDir, limiter }) {
   // ---------- API ----------
   const api = express.Router()
   api.use(express.json({ limit: '1kb' }))
-  api.post('/resolve-anomaly', createResolveAnomalyHandler({ supabase, adminPassword, limiter }))
+  api.post('/resolve-anomaly', createResolveAnomalyHandler({ supabase, limiter }))
   api.use((_req, res) => res.status(404).json({ error: 'Route inconnue' }))
   // eslint-disable-next-line no-unused-vars -- Express reconnaît un gestionnaire d'erreurs à ses 4 paramètres
   api.use((err, _req, res, _next) => {

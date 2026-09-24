@@ -1,13 +1,14 @@
 import { useCallback, useMemo, useState } from 'react'
 import AnomalyTable from './components/AnomalyTable'
+import AuthControls from './components/AuthControls'
 import { ResponsibleTag } from './components/Badges'
 import FilterBar from './components/FilterBar'
 import GroupTable from './components/GroupTable'
 import KpiBar from './components/KpiBar'
-import PasswordDialog from './components/PasswordDialog'
+import LoginForm from './components/LoginForm'
 import ViewSwitcher from './components/ViewSwitcher'
 import { useAnomalies } from './hooks/useAnomalies'
-import { useAdminSession } from './hooks/useAdminSession'
+import { useAuth } from './hooks/useAuth'
 import { useHashRoute } from './hooks/useHashRoute'
 import {
   filterAndSortAnomalies,
@@ -27,7 +28,8 @@ const DEFAULT_FILTERS = { status: 'all', type: 'all', responsible: 'all', sortDi
 
 function App() {
   const { anomalies, loading, error, refetch, resolveAnomaly } = useAnomalies()
-  const admin = useAdminSession()
+  const { user, ready: authReady, signIn, signOut } = useAuth()
+  const [showLogin, setShowLogin] = useState(false)
   const { route, navigate } = useHashRoute()
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
 
@@ -43,13 +45,25 @@ function App() {
       })),
     [],
   )
-  const { withPassword } = admin
-  const resolveWithPassword = useCallback(
-    (id) => withPassword((password) => resolveAnomaly(id, password)),
-    [withPassword, resolveAnomaly],
-  )
+  const closeLogin = useCallback(() => setShowLogin(false), [])
 
-  const tableProps = { onToggleSort: toggleSort, onResolve: resolveWithPassword }
+  async function handleSignIn(email, password) {
+    await signIn(email, password)
+    setShowLogin(false)
+  }
+
+  const tableProps = { onToggleSort: toggleSort, onResolve: resolveAnomaly, canResolve: Boolean(user) }
+  const readOnlyNotice =
+    authReady && !user ? (
+      <p className="notice">
+        Consultation en lecture seule.{' '}
+        <button type="button" className="link-button" onClick={() => setShowLogin(true)}>
+          Connectez-vous
+        </button>{' '}
+        pour marquer des anomalies comme résolues.
+      </p>
+    ) : null
+
   function renderOverview() {
     const view = route.name
 
@@ -99,7 +113,10 @@ function App() {
       )
     } else {
       content = (
-        <AnomalyTable anomalies={visibleAnomalies} sortDirection={filters.sortDirection} {...tableProps} />
+        <>
+          {readOnlyNotice}
+          <AnomalyTable anomalies={visibleAnomalies} sortDirection={filters.sortDirection} {...tableProps} />
+        </>
       )
     }
 
@@ -155,7 +172,14 @@ function App() {
       )
     }
 
-    const pageProps = { anomalies, filters, onFiltersChange: updateFilters, tableProps, onNavigate: navigate }
+    const pageProps = {
+      anomalies,
+      filters,
+      onFiltersChange: updateFilters,
+      tableProps,
+      notice: readOnlyNotice,
+      onNavigate: navigate,
+    }
 
     if (route.name === 'job') {
       return <JobPage jobId={route.id} responsibleOptions={responsibleOptions} {...pageProps} />
@@ -198,20 +222,13 @@ function App() {
               </svg>
               {loading ? 'Chargement…' : 'Actualiser'}
             </button>
-            {admin.unlocked && (
-              <button
-                type="button"
-                className="button"
-                onClick={admin.forget}
-                title="Oublier le mot de passe administrateur"
-              >
-                <svg className="button-icon" viewBox="0 0 16 16" aria-hidden="true">
-                  <rect x="3" y="7" width="10" height="7" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                  <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-                Verrouiller
-              </button>
-            )}
+            <AuthControls
+              user={user}
+              ready={authReady}
+              onLoginClick={() => setShowLogin((open) => !open)}
+              onSignOut={signOut}
+            />
+            {showLogin && !user && <LoginForm onSignIn={handleSignIn} onCancel={closeLogin} />}
           </div>
         </div>
       </header>
@@ -228,8 +245,6 @@ function App() {
 
         <main>{renderContent()}</main>
       </div>
-
-      {admin.dialog && <PasswordDialog {...admin.dialog} />}
     </>
   )
 }

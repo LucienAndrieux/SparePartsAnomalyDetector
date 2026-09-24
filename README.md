@@ -7,8 +7,8 @@ Dashboard de suivi des anomalies détectées sur des commandes de pièces détac
 ```
 Google Sheets ──► n8n + LLM (Groq) ──► Supabase ──► Dashboard (React + Express)
  commandes        contrôle des lignes,   table        consultation publique,
-                  détection et           anomalies    résolution protégée
-                  description des                     par mot de passe
+                  détection et           anomalies    résolution réservée
+                  description des                     aux comptes connectés
                   anomalies
 ```
 
@@ -19,15 +19,17 @@ Google Sheets ──► n8n + LLM (Groq) ──► Supabase ──► Dashboard 
 ### Sécurité
 
 ```
-Navigateur ──lecture (clé anon)──────────────────────────► Supabase
-    │                                                          ▲
-    └──POST /api/resolve-anomaly + mot de passe──► Express ────┘
-                                                (clé service_role)
+Navigateur ──lecture (clé anon)─────────────────────────► Supabase
+    │                                                         ▲
+    └──POST /api/resolve-anomaly + jeton de session──► Express ┘
+                                             (vérifie le jeton,
+                                              écrit avec la clé service_role)
 ```
 
 - **Lecture** : le navigateur utilise uniquement la clé anon. Les rôles `anon` et `authenticated` n'ont que le droit `SELECT`, et seulement sur les colonnes métier. Les colonnes techniques de n8n (`_row_number`, `_actual`) sont exclues par des `GRANT` au niveau des colonnes.
 - **Écriture** : seul le serveur Express écrit, avec la clé `service_role`. Elle est lue dans `process.env` sans préfixe `VITE_`, donc elle n'est jamais incluse dans le bundle client.
-- **Résolution protégée** : `POST /api/resolve-anomaly` exige le mot de passe `ADMIN_PASSWORD` dans l'en-tête `X-Admin-Password`. La comparaison se fait à temps constant, et une IP est bloquée 15 minutes après 5 échecs. Côté interface, le mot de passe est demandé au premier clic, puis gardé **en mémoire uniquement** jusqu'au rechargement de la page. Le bouton « Verrouiller » permet de l'oublier plus tôt.
+- **Résolution réservée aux comptes connectés** : l'utilisateur se connecte par email et mot de passe (Supabase Auth). `POST /api/resolve-anomaly` exige son jeton de session (`Authorization: Bearer …`), que le serveur vérifie auprès de Supabase Auth avant d'écrire. Chaque résolution est journalisée avec l'email de son auteur. Une IP est bloquée 15 minutes après 5 jetons invalides.
+- **Lecture toujours anonyme** : même connecté, le dashboard lit avec un client distinct, sans session. La session ne sert qu'à autoriser les écritures.
 - **Réseau** : le serveur n'écoute que sur `127.0.0.1`. Seul Caddy, sur la même machine, peut le joindre.
 
 ## Fonctionnalités
@@ -48,7 +50,14 @@ React 19 · Vite · Express 5 · Supabase (`@supabase/supabase-js`) · Vitest ·
 
 Appliquer dans l'ordre les migrations de [`supabase/migrations/`](supabase/migrations/), via le SQL Editor Supabase ou `supabase db push`.
 
-### 2. Variables d'environnement
+### 2. Comptes utilisateurs
+
+Dans le dashboard Supabase :
+
+1. *Authentication → Sign In / Providers* : laisser **Email** activé et **désactiver « Allow new users to sign up »**. Sinon, n'importe qui peut créer un compte et résoudre des anomalies.
+2. *Authentication → Users → Add user → Create new user* : créer chaque compte habilité, en cochant **Auto Confirm User**.
+
+### 3. Variables d'environnement
 
 ```bash
 cp .env.example .env
@@ -59,12 +68,11 @@ cp .env.example .env
 | `VITE_SUPABASE_URL` | frontend (build) et serveur | oui |
 | `VITE_SUPABASE_ANON_KEY` | frontend (build) | oui (lecture seule) |
 | `SUPABASE_SERVICE_ROLE_KEY` | serveur | **non** |
-| `ADMIN_PASSWORD` | serveur | **non** |
 | `PORT` | serveur (défaut `3000`) | — |
 
 Les variables `VITE_*` sont intégrées au moment du build : il faut relancer `npm run build` après les avoir modifiées.
 
-### 3. Lancer
+### 4. Lancer
 
 ```bash
 npm install
@@ -113,17 +121,17 @@ server/
 ├── index.js                   Point d'entrée : .env, client Supabase, écoute sur 127.0.0.1
 ├── app.js                     Application Express : API + build statique + fallback SPA
 ├── resolveAnomaly.js          POST /api/resolve-anomaly
-├── auth.js                    Comparaison à temps constant, limitation des échecs
+├── auth.js                    Lecture du jeton Bearer, limitation des échecs
 └── tests/                     Tests du serveur (faux client Supabase)
 src/
 ├── lib/
-│   ├── supabaseClient.js      Client Supabase en lecture seule (rôle anon)
+│   ├── supabaseClient.js      Clients Supabase : lecture (anon) et authentification
 │   ├── anomalies.js           Logique métier pure : KPIs, filtres, regroupements, formatage
 │   ├── anomalyColumns.js      Colonnes exposées (partagé avec le serveur)
 │   └── routes.js              Routage par hash (#jobs/…, #responsibles/…)
 ├── hooks/
 │   ├── useAnomalies.js        Chargement, états, résolution optimiste
-│   ├── useAdminSession.js     Mot de passe administrateur en mémoire
+│   ├── useAuth.js             Session Supabase Auth (email + mot de passe)
 │   └── useHashRoute.js        Route courante et navigation
 ├── pages/
 │   ├── JobPage.jsx            Détail d'un job
@@ -135,12 +143,13 @@ src/
     ├── KpiBar.jsx, Stat.jsx, ResolutionMeter.jsx
     ├── FilterBar.jsx, ViewSwitcher.jsx
     ├── Badges.jsx, ResolveAction.jsx
-    └── PasswordDialog.jsx
+    └── AuthControls.jsx, LoginForm.jsx
 supabase/migrations/           Droits d'accès et colonnes de la table
 ```
 
 ## Limites connues
 
-- Un seul mot de passe administrateur, partagé : pas de comptes individuels ni de journal nominatif des résolutions.
+- Tous les comptes connectés ont les mêmes droits (pas de rôles) : l'accès se contrôle en créant ou supprimant des comptes dans Supabase.
+- L'auteur d'une résolution est journalisé par le serveur, mais pas enregistré en base.
 - La limitation des tentatives est en mémoire : elle repart de zéro au redémarrage du service.
 - L'heure de `resolved_at` est celle du serveur Node, pas `now()` côté Postgres.

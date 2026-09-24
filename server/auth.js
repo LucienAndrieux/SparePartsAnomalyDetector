@@ -1,18 +1,12 @@
-import { createHash, timingSafeEqual } from 'node:crypto'
-
-/**
- * Compare deux mots de passe en temps constant.
- * Les deux valeurs sont d'abord hachées : timingSafeEqual exige des longueurs
- * égales, et le hachage évite de révéler la longueur du mot de passe attendu.
- */
-export function passwordsMatch(given, expected) {
-  if (typeof given !== 'string' || typeof expected !== 'string' || expected === '') return false
-  const digest = (value) => createHash('sha256').update(value, 'utf8').digest()
-  return timingSafeEqual(digest(given), digest(expected))
+/** Extrait le jeton de l'en-tête « Authorization: Bearer <jeton> ». */
+export function getBearerToken(req) {
+  const match = req.get('authorization')?.match(/^Bearer\s+(\S+)$/i)
+  return match?.[1] ?? null
 }
 
 /**
  * Limite les échecs d'authentification par IP (fenêtre glissante simple, en mémoire).
+ * Évite qu'un client envoie des jetons en boucle (chaque essai interroge Supabase Auth).
  * Suffisant pour une instance unique derrière Caddy ; remis à zéro au redémarrage.
  */
 export function createFailureLimiter({ maxFailures = 5, windowMs = 15 * 60 * 1000, now = Date.now } = {}) {
