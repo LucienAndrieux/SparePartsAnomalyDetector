@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   UNASSIGNED,
   computeKpis,
+  countLabel,
   filterAndSortAnomalies,
   formatDateTime,
+  getAnomalyContext,
   getResponsibleKey,
   groupAnomaliesByJob,
   groupAnomaliesByResponsible,
+  listFilterOptions,
   listResponsibles,
+  pluralize,
 } from './anomalies'
 
 const HOUR = 60 * 60 * 1000
@@ -138,6 +142,40 @@ describe('formatDateTime', () => {
   it('returns a dash for missing or invalid values', () => {
     expect(formatDateTime(null)).toBe('—')
     expect(formatDateTime('not a date')).toBe('—')
+  })
+})
+
+describe('pluralize / countLabel', () => {
+  it('uses the singular for 0 and 1, the plural above', () => {
+    expect(pluralize(0, 'job')).toBe('job')
+    expect(pluralize(1, 'job')).toBe('job')
+    expect(pluralize(2, 'job')).toBe('jobs')
+    expect(countLabel(3, 'anomalie')).toBe('3 anomalies')
+  })
+})
+
+describe('listFilterOptions', () => {
+  it('lists only the statuses, types and responsibles present', () => {
+    const options = listFilterOptions([
+      makeAnomaly({ id: 1, anomaly_type: 'date_incoherente', responsible: 'KWE' }),
+      makeAnomaly({ id: 2, anomaly_type: 'doublon', responsible: null }),
+      makeAnomaly({ id: 3, anomaly_type: 'champ_manquant', responsible: 'KWE' }),
+    ])
+    expect(options).toEqual({
+      statuses: ['unresolved'],
+      types: ['champ_manquant', 'date_incoherente', 'doublon'],
+      responsibles: ['KWE', UNASSIGNED],
+    })
+  })
+
+  it('returns empty lists for no anomalies', () => {
+    expect(listFilterOptions([])).toEqual({ statuses: [], types: [], responsibles: [] })
+  })
+})
+
+describe('getAnomalyContext', () => {
+  it('keeps only the filled-in client, item and supplier', () => {
+    expect(getAnomalyContext(makeAnomaly({ client: 'Dubosc', item: '', supplier: 'SKF' }))).toEqual(['Dubosc', 'SKF'])
   })
 })
 

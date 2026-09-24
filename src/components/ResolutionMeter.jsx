@@ -1,6 +1,8 @@
+import { pluralize } from '../lib/anomalies'
+
 export default function ResolutionMeter({ resolved, total }) {
   const ratio = total > 0 ? resolved / total : 0
-  const label = `${resolved}/${total} résolue${resolved > 1 ? 's' : ''}`
+  const label = `${resolved}/${total} ${pluralize(resolved, 'résolue')}`
 
   return (
     <div className="meter" title={label}>

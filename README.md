@@ -134,10 +134,13 @@ src/
 │   ├── useAnomalies.js        Chargement, états, résolution optimiste
 │   ├── useAuth.js             Session Supabase Auth (email + mot de passe)
 │   └── useHashRoute.js        Route courante et navigation
+├── App.jsx                    Orchestration : données, session, filtres, choix de la page
 ├── pages/
+│   ├── OverviewPage.jsx       Accueil : KPIs + anomalies à plat, par job ou par responsable
 │   ├── JobPage.jsx            Détail d'un job
 │   └── ResponsiblePage.jsx    Détail d'un responsable
 └── components/
+    ├── TopBar.jsx             Barre du haut (Google Sheets, actualisation, connexion)
     ├── GroupTable.jsx         Liste de groupes (jobs, responsables)
     ├── GroupDetail.jsx        Page de détail générique d'un groupe
     ├── AnomalyTable.jsx / AnomalyRow.jsx

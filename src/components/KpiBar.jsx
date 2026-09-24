@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { ANOMALY_TYPES, computeKpis } from '../lib/anomalies'
+import { ANOMALY_TYPES, computeKpis, countLabel, pluralize } from '../lib/anomalies'
 import Stat from './Stat'
 
 const percentFormatter = new Intl.NumberFormat('fr-FR', {
@@ -43,7 +43,6 @@ function TypeBreakdown({ byType, total }) {
 
 export default function KpiBar({ anomalies }) {
   const kpis = useMemo(() => computeKpis(anomalies), [anomalies])
-  const plural = (n) => (n > 1 ? 's' : '')
 
   return (
     <section className="stats" aria-label="Indicateurs clés">
@@ -56,7 +55,7 @@ export default function KpiBar({ anomalies }) {
       <Stat
         label="Résolues sous 48h"
         value={kpis.slaRate === null ? '—' : percentFormatter.format(kpis.slaRate)}
-        hint={`sur ${kpis.resolvedCount} anomalie${plural(kpis.resolvedCount)} résolue${plural(kpis.resolvedCount)}`}
+        hint={`sur ${countLabel(kpis.resolvedCount, 'anomalie')} ${pluralize(kpis.resolvedCount, 'résolue')}`}
       />
       <Stat label="Répartition par type">
         <TypeBreakdown byType={kpis.byType} total={kpis.total} />

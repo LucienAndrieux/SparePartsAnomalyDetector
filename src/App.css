@@ -17,6 +17,10 @@
   padding: 0 32px;
 }
 
+.page {
+  padding-bottom: 64px;
+}
+
 .topbar-inner {
   display: flex;
   align-items: center;
@@ -54,10 +58,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.page {
-  padding-bottom: 64px;
 }
 
 .page-header {
@@ -503,6 +503,51 @@
   height: 12px;
   color: var(--ink-muted);
   pointer-events: none;
+}
+
+/* Segments « Libellé | Tous | valeur… » : toutes les valeurs visibles d'un coup */
+.filter-bar-segments {
+  row-gap: 10px;
+  column-gap: 20px;
+}
+
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.segmented-label {
+  margin-right: 4px;
+  color: var(--ink-muted);
+}
+
+.segment {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.segment:hover {
+  background: var(--surface-subtle);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.segment.is-active {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+  color: var(--brand-strong);
 }
 
 .filter-bar .link-button {

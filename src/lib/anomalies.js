@@ -4,13 +4,22 @@ export const ANOMALY_TYPES = {
   date_incoherente: { label: 'Date incohérente', series: 2 },
 }
 
-export const STATUS_FILTERS = [
-  { value: 'all', label: 'Toutes' },
-  { value: 'unresolved', label: 'Non résolues' },
-  { value: 'resolved', label: 'Résolues' },
-]
+export const STATUS_LABELS = {
+  unresolved: 'Non résolues',
+  resolved: 'Résolues',
+}
 
 const RESOLUTION_SLA_MS = 48 * 60 * 60 * 1000
+
+/** Accorde `word` au pluriel selon `count` : pluralize(2, 'job') → 'jobs'. */
+export function pluralize(count, word) {
+  return count > 1 ? `${word}s` : word
+}
+
+/** Nombre suivi du mot accordé : countLabel(2, 'job') → '2 jobs'. */
+export function countLabel(count, word) {
+  return `${count} ${pluralize(count, word)}`
+}
 
 export function getAnomalyTypeLabel(type) {
   return ANOMALY_TYPES[type]?.label ?? type
@@ -60,6 +69,11 @@ export function computeKpis(anomalies) {
 /** Clé de responsable ; les anomalies sans responsable sont regroupées sous UNASSIGNED. */
 export const UNASSIGNED = 'non-attribue'
 
+/** Client, article et fournisseur renseignés de l'anomalie. */
+export function getAnomalyContext(anomaly) {
+  return [anomaly.client, anomaly.item, anomaly.supplier].filter(Boolean)
+}
+
 export function getResponsibleKey(anomaly) {
   return anomaly.responsible?.trim() || UNASSIGNED
 }
@@ -72,6 +86,23 @@ export function getResponsibleLabel(key) {
 export function listResponsibles(anomalies) {
   const keys = new Set(anomalies.map(getResponsibleKey))
   return [...keys].sort((a, b) => (a === UNASSIGNED) - (b === UNASSIGNED) || a.localeCompare(b))
+}
+
+/**
+ * Valeurs de filtre présentes dans `anomalies` : statuts, types (ordre de ANOMALY_TYPES,
+ * types inconnus en dernier) et responsables. Sert à ne proposer que des choix utiles.
+ */
+export function listFilterOptions(anomalies) {
+  const typeOrder = Object.keys(ANOMALY_TYPES)
+  const rank = (type) => (typeOrder.includes(type) ? typeOrder.indexOf(type) : typeOrder.length)
+
+  return {
+    statuses: Object.keys(STATUS_LABELS).filter((status) =>
+      anomalies.some((anomaly) => Boolean(anomaly.resolved) === (status === 'resolved')),
+    ),
+    types: [...new Set(anomalies.map((anomaly) => anomaly.anomaly_type))].sort((a, b) => rank(a) - rank(b)),
+    responsibles: listResponsibles(anomalies),
+  }
 }
 
 export function filterAndSortAnomalies(anomalies, { status, type, responsible = 'all', sortDirection }) {
@@ -127,7 +158,7 @@ export function groupAnomaliesByJob(anomalies) {
     return {
       ...group,
       jobId: group.key,
-      context: [first.client, first.item, first.supplier].filter(Boolean),
+      context: getAnomalyContext(first),
       responsibles: listResponsibles(group.anomalies),
     }
   })

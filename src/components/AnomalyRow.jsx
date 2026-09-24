@@ -1,10 +1,10 @@
-import { formatDateTime } from '../lib/anomalies'
+import { formatDateTime, getAnomalyContext, getResponsibleKey } from '../lib/anomalies'
 import { jobHref } from '../lib/routes'
 import { ResponsibleTag, StatusBadge, TypeBadge } from './Badges'
 import ResolveAction from './ResolveAction'
 
 export default function AnomalyRow({ anomaly, onResolve, canResolve, showJob = true, showResponsible = true }) {
-  const context = [anomaly.client, anomaly.item, anomaly.supplier].filter(Boolean)
+  const context = getAnomalyContext(anomaly)
 
   return (
     <tr>
@@ -30,7 +30,7 @@ export default function AnomalyRow({ anomaly, onResolve, canResolve, showJob = t
       </td>
       {showResponsible && (
         <td data-label="Responsable">
-          <ResponsibleTag responsible={anomaly.responsible} />
+          <ResponsibleTag responsibleKey={getResponsibleKey(anomaly)} />
         </td>
       )}
       <td data-label="Statut">

@@ -28,18 +28,18 @@ export function StatusBadge({ anomaly }) {
   )
 }
 
-/** Responsable cliquable (vers sa page) ; « Non attribué » en retrait. */
-export function ResponsibleTag({ responsible, linked = true }) {
-  const key = responsible?.trim() || UNASSIGNED
-  if (key === UNASSIGNED) {
-    return <span className="responsible-tag is-unassigned">{getResponsibleLabel(key)}</span>
+/**
+ * Responsable cliquable (vers sa page) ; « Non attribué » en retrait.
+ * `responsibleKey` : clé issue de getResponsibleKey / listResponsibles.
+ */
+export function ResponsibleTag({ responsibleKey }) {
+  if (responsibleKey === UNASSIGNED) {
+    return <span className="responsible-tag is-unassigned">{getResponsibleLabel(responsibleKey)}</span>
   }
 
-  return linked ? (
-    <a className="responsible-tag" href={responsibleHref(key)} title={`Voir les anomalies de ${key}`}>
-      {key}
+  return (
+    <a className="responsible-tag" href={responsibleHref(responsibleKey)} title={`Voir les anomalies de ${responsibleKey}`}>
+      {responsibleKey}
     </a>
-  ) : (
-    <span className="responsible-tag">{key}</span>
   )
 }
