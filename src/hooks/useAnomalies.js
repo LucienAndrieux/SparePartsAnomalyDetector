@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { ANOMALY_COLUMNS } from '../lib/anomalyColumns'
 import { supabase } from '../lib/supabaseClient'
 
 const RESOLVE_ENDPOINT = '/.netlify/functions/resolve-anomaly'
@@ -12,7 +13,7 @@ async function fetchAnomalies() {
 
   const { data, error } = await supabase
     .from('anomalies')
-    .select('*')
+    .select(ANOMALY_COLUMNS)
     .order('detected_at', { ascending: false })
 
   if (error) throw new Error(error.message)
@@ -20,9 +21,16 @@ async function fetchAnomalies() {
 }
 
 async function postResolveAnomaly(id) {
+  const { data } = (await supabase?.auth.getSession()) ?? {}
+  const accessToken = data?.session?.access_token
+  if (!accessToken) throw new Error('Connectez-vous pour résoudre une anomalie.')
+
   const response = await fetch(RESOLVE_ENDPOINT, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify({ id }),
   })
 

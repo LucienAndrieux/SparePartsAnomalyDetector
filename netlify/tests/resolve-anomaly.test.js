@@ -8,11 +8,13 @@ vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '')
 
 const { default: handler } = await import('../functions/resolve-anomaly.js')
 
-function post(body) {
+function post(body, { authorization = 'Bearer fake.jwt.token' } = {}) {
+  const headers = { 'Content-Type': 'application/json' }
+  if (authorization) headers.Authorization = authorization
   return handler(
     new Request('http://localhost/.netlify/functions/resolve-anomaly', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body,
     }),
   )
@@ -23,6 +25,15 @@ describe('resolve-anomaly', () => {
     const response = await handler(new Request('http://localhost/', { method: 'GET' }))
     expect(response.status).toBe(405)
     expect(response.headers.get('Allow')).toBe('POST')
+  })
+
+  it.each([
+    ['missing header', null],
+    ['non-bearer scheme', 'Basic dXNlcjpwYXNz'],
+    ['empty bearer', 'Bearer '],
+  ])('rejects %s with 401 before reading the body', async (_label, authorization) => {
+    const response = await post('{"id":1}', { authorization })
+    expect(response.status).toBe(401)
   })
 
   it.each([

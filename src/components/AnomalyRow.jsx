@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ANOMALY_TYPES, formatDateTime, getAnomalyTypeLabel } from '../lib/anomalies'
 
-export default function AnomalyRow({ anomaly, onResolve }) {
+export default function AnomalyRow({ anomaly, onResolve, canResolve }) {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
 
@@ -47,18 +47,20 @@ export default function AnomalyRow({ anomaly, onResolve }) {
           <span className="badge tone-red">Non résolue</span>
         )}
       </td>
-      <td data-label="Action" className="cell-action">
-        {!anomaly.resolved && (
-          <button type="button" className="button-secondary" onClick={handleResolve} disabled={pending}>
-            {pending ? 'En cours…' : 'Marquer comme résolu'}
-          </button>
-        )}
-        {error && (
-          <span className="cell-error" role="alert">
-            {error}
-          </span>
-        )}
-      </td>
+      {canResolve && (
+        <td data-label="Action" className="cell-action">
+          {!anomaly.resolved && (
+            <button type="button" className="button-secondary" onClick={handleResolve} disabled={pending}>
+              {pending ? 'En cours…' : 'Marquer comme résolu'}
+            </button>
+          )}
+          {error && (
+            <span className="cell-error" role="alert">
+              {error}
+            </span>
+          )}
+        </td>
+      )}
     </tr>
   )
 }

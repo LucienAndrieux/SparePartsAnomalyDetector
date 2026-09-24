@@ -1,6 +1,6 @@
 import AnomalyRow from './AnomalyRow'
 
-export default function AnomalyTable({ anomalies, sortDirection, onToggleSort, onResolve }) {
+export default function AnomalyTable({ anomalies, sortDirection, onToggleSort, onResolve, canResolve }) {
   if (anomalies.length === 0) {
     return <p className="state-message">Aucune anomalie ne correspond aux filtres sélectionnés.</p>
   }
@@ -23,14 +23,16 @@ export default function AnomalyTable({ anomalies, sortDirection, onToggleSort, o
               </button>
             </th>
             <th scope="col">Statut</th>
-            <th scope="col">
-              <span className="visually-hidden">Action</span>
-            </th>
+            {canResolve && (
+              <th scope="col">
+                <span className="visually-hidden">Action</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
           {anomalies.map((anomaly) => (
-            <AnomalyRow key={anomaly.id} anomaly={anomaly} onResolve={onResolve} />
+            <AnomalyRow key={anomaly.id} anomaly={anomaly} onResolve={onResolve} canResolve={canResolve} />
           ))}
         </tbody>
       </table>

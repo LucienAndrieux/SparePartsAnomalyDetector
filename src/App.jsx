@@ -1,13 +1,18 @@
 import { useMemo, useState } from 'react'
 import AnomalyTable from './components/AnomalyTable'
+import AuthControls from './components/AuthControls'
 import FilterBar from './components/FilterBar'
 import KpiBar from './components/KpiBar'
+import LoginForm from './components/LoginForm'
 import { useAnomalies } from './hooks/useAnomalies'
+import { useAuth } from './hooks/useAuth'
 import { filterAndSortAnomalies } from './lib/anomalies'
 import './App.css'
 
 function App() {
   const { anomalies, loading, error, refetch, resolveAnomaly } = useAnomalies()
+  const { user, ready: authReady, signIn, signOut } = useAuth()
+  const [showLogin, setShowLogin] = useState(false)
   const [status, setStatus] = useState('all')
   const [type, setType] = useState('all')
   const [sortDirection, setSortDirection] = useState('desc')
@@ -19,6 +24,11 @@ function App() {
 
   const toggleSort = () => setSortDirection((dir) => (dir === 'desc' ? 'asc' : 'desc'))
 
+  async function handleSignIn(email, password) {
+    await signIn(email, password)
+    setShowLogin(false)
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -26,10 +36,22 @@ function App() {
           <h1>Anomalies pièces détachées</h1>
           <p className="subtitle">Contrôles automatiques des commandes, issus du pipeline n8n</p>
         </div>
-        <button type="button" className="button-secondary" onClick={refetch} disabled={loading}>
-          {loading ? 'Chargement…' : 'Actualiser'}
-        </button>
+        <div className="header-actions">
+          <button type="button" className="button-secondary" onClick={refetch} disabled={loading}>
+            {loading ? 'Chargement…' : 'Actualiser'}
+          </button>
+          <AuthControls
+            user={user}
+            ready={authReady}
+            onLoginClick={() => setShowLogin(true)}
+            onSignOut={signOut}
+          />
+        </div>
       </header>
+
+      {showLogin && !user && (
+        <LoginForm onSignIn={handleSignIn} onCancel={() => setShowLogin(false)} />
+      )}
 
       <main>
         {error ? (
@@ -57,11 +79,17 @@ function App() {
                 onTypeChange={setType}
                 resultCount={visibleAnomalies.length}
               />
+              {authReady && !user && (
+                <p className="panel-notice">
+                  Consultation en lecture seule. Connectez-vous pour marquer des anomalies comme résolues.
+                </p>
+              )}
               <AnomalyTable
                 anomalies={visibleAnomalies}
                 sortDirection={sortDirection}
                 onToggleSort={toggleSort}
                 onResolve={resolveAnomaly}
+                canResolve={Boolean(user)}
               />
             </section>
           </>

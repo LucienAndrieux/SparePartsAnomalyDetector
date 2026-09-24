@@ -1,8 +1,24 @@
--- Accès en lecture seule pour le dashboard (clé anon).
--- Les écritures passent exclusivement par la fonction Netlify resolve-anomaly,
--- qui utilise la clé service_role côté serveur.
+-- Accès en lecture seule pour le dashboard (clé anon), limité aux colonnes
+-- utiles au frontend : les colonnes techniques internes à n8n
+-- (_row_number, _actual) sont exclues au niveau de la base, pas seulement
+-- côté code frontend (voir src/lib/anomalyColumns.js).
+-- Les écritures passent exclusivement par la fonction Netlify resolve-anomaly.
 
-grant select on table public.anomalies to anon;
+revoke select on table public.anomalies from anon;
+
+grant select (
+  id,
+  job_id,
+  client,
+  item,
+  supplier,
+  anomaly_type,
+  field_name,
+  description,
+  detected_at,
+  resolved,
+  resolved_at
+) on table public.anomalies to anon;
 
 alter table public.anomalies enable row level security;
 

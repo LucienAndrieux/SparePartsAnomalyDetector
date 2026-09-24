@@ -52,9 +52,107 @@
   color: var(--color-accent);
 }
 
-.button-secondary:disabled {
+.button-secondary:disabled,
+.button-primary:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.button-primary {
+  padding: 6px 14px;
+  border: 1px solid var(--color-accent);
+  border-radius: 6px;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: #264bb0;
+}
+
+/* ---------- Auth ---------- */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.auth-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.auth-email {
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 380px;
+  margin: -8px 0 24px auto;
+  padding: 20px;
+}
+
+.login-form h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.login-hint {
+  margin-top: -8px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.field input {
+  padding: 7px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 400;
+}
+
+.form-error {
+  color: var(--tone-red-fg);
+  font-size: 0.85rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.panel-notice {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-accent-soft);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
 }
 
 /* ---------- Tones (badges, légendes) ---------- */
@@ -338,6 +436,11 @@
 
   .app-header {
     flex-direction: column;
+  }
+
+  .login-form {
+    max-width: none;
+    margin: 0 0 20px;
   }
 
   .kpi-bar {
