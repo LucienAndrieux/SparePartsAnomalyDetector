@@ -2,7 +2,7 @@
 -- utiles au frontend : les colonnes techniques internes à n8n
 -- (_row_number, _actual) sont exclues au niveau de la base, pas seulement
 -- côté code frontend (voir src/lib/anomalyColumns.js).
--- Les écritures passent exclusivement par la fonction Netlify resolve-anomaly.
+-- Les écritures passent exclusivement par l'API du serveur (POST /api/resolve-anomaly).
 
 revoke select on table public.anomalies from anon;
 

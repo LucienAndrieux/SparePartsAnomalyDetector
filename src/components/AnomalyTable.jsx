@@ -1,6 +1,13 @@
 import AnomalyRow from './AnomalyRow'
 
-export default function AnomalyTable({ anomalies, sortDirection, onToggleSort, onResolve, canResolve }) {
+export default function AnomalyTable({
+  anomalies,
+  sortDirection,
+  onToggleSort,
+  onResolve,
+  showJob = true,
+  showResponsible = true,
+}) {
   if (anomalies.length === 0) {
     return <p className="state-message">Aucune anomalie ne correspond aux filtres sélectionnés.</p>
   }
@@ -9,10 +16,10 @@ export default function AnomalyTable({ anomalies, sortDirection, onToggleSort, o
 
   return (
     <div className="table-wrapper">
-      <table className="anomaly-table">
+      <table className="data-table">
         <thead>
           <tr>
-            <th scope="col">Job</th>
+            {showJob && <th scope="col">Job</th>}
             <th scope="col">Type</th>
             <th scope="col">Champ</th>
             <th scope="col">Description</th>
@@ -22,17 +29,22 @@ export default function AnomalyTable({ anomalies, sortDirection, onToggleSort, o
                 <span aria-hidden="true">{sortDirection === 'desc' ? '↓' : '↑'}</span>
               </button>
             </th>
+            {showResponsible && <th scope="col">Resp.</th>}
             <th scope="col">Statut</th>
-            {canResolve && (
-              <th scope="col">
-                <span className="visually-hidden">Action</span>
-              </th>
-            )}
+            <th scope="col">
+              <span className="visually-hidden">Action</span>
+            </th>
           </tr>
         </thead>
         <tbody>
           {anomalies.map((anomaly) => (
-            <AnomalyRow key={anomaly.id} anomaly={anomaly} onResolve={onResolve} canResolve={canResolve} />
+            <AnomalyRow
+              key={anomaly.id}
+              anomaly={anomaly}
+              onResolve={onResolve}
+              showJob={showJob}
+              showResponsible={showResponsible}
+            />
           ))}
         </tbody>
       </table>

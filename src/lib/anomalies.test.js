@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { computeKpis, filterAndSortAnomalies, formatDateTime } from './anomalies'
+import {
+  UNASSIGNED,
+  computeKpis,
+  filterAndSortAnomalies,
+  formatDateTime,
+  getResponsibleKey,
+  groupAnomaliesByJob,
+  groupAnomaliesByResponsible,
+  listResponsibles,
+} from './anomalies'
 
 const HOUR = 60 * 60 * 1000
 
@@ -129,5 +138,98 @@ describe('formatDateTime', () => {
   it('returns a dash for missing or invalid values', () => {
     expect(formatDateTime(null)).toBe('—')
     expect(formatDateTime('not a date')).toBe('—')
+  })
+})
+
+describe('groupAnomaliesByJob', () => {
+  it('returns an empty list for no anomalies', () => {
+    expect(groupAnomaliesByJob([])).toEqual([])
+  })
+
+  it('groups by job and counts total and unresolved', () => {
+    const [group] = groupAnomaliesByJob([
+      makeAnomaly({ id: 1 }),
+      makeAnomaly({ id: 2 }),
+      resolvedAfter(1, { id: 3 }),
+    ])
+
+    expect(group.jobId).toBe('7617')
+    expect(group.total).toBe(3)
+    expect(group.unresolved).toBe(2)
+    expect(group.anomalies.map((a) => a.id)).toEqual([1, 2, 3])
+  })
+
+  it('puts jobs with the most unresolved anomalies first, then the most recent', () => {
+    const groups = groupAnomaliesByJob([
+      makeAnomaly({ id: 1, job_id: 'A', detected_at: '2026-09-22T08:00:00Z' }),
+      makeAnomaly({ id: 2, job_id: 'B', detected_at: '2026-09-20T08:00:00Z' }),
+      makeAnomaly({ id: 3, job_id: 'B', detected_at: '2026-09-20T09:00:00Z' }),
+      makeAnomaly({ id: 4, job_id: 'C', detected_at: '2026-09-23T08:00:00Z' }),
+      resolvedAfter(1, { id: 5, job_id: 'D', detected_at: '2026-09-24T08:00:00Z' }),
+    ])
+
+    expect(groups.map((g) => g.jobId)).toEqual(['B', 'C', 'A', 'D'])
+  })
+
+  it('tracks the latest detection date and context of the job', () => {
+    const [group] = groupAnomaliesByJob([
+      makeAnomaly({ id: 1, detected_at: '2026-09-20T08:00:00Z', client: 'Dubosc' }),
+      makeAnomaly({ id: 2, detected_at: '2026-09-22T08:00:00Z' }),
+    ])
+
+    expect(group.latestDetectedAt).toBe('2026-09-22T08:00:00Z')
+    expect(group.context).toEqual(['Dubosc'])
+  })
+})
+
+describe('responsibles', () => {
+  it('maps missing or blank responsibles to UNASSIGNED', () => {
+    expect(getResponsibleKey(makeAnomaly({ responsible: 'KWE' }))).toBe('KWE')
+    expect(getResponsibleKey(makeAnomaly({ responsible: null }))).toBe(UNASSIGNED)
+    expect(getResponsibleKey(makeAnomaly({ responsible: '  ' }))).toBe(UNASSIGNED)
+    expect(getResponsibleKey(makeAnomaly({ responsible: ' FLM ' }))).toBe('FLM')
+  })
+
+  it('lists responsibles alphabetically with unassigned last', () => {
+    const list = listResponsibles([
+      makeAnomaly({ responsible: 'SVA' }),
+      makeAnomaly({ responsible: null }),
+      makeAnomaly({ responsible: 'BSN' }),
+      makeAnomaly({ responsible: 'SVA' }),
+    ])
+    expect(list).toEqual(['BSN', 'SVA', UNASSIGNED])
+  })
+
+  it('filters by responsible, including unassigned', () => {
+    const anomalies = [
+      makeAnomaly({ id: 1, responsible: 'KWE' }),
+      makeAnomaly({ id: 2, responsible: null }),
+      makeAnomaly({ id: 3, responsible: 'FLM' }),
+    ]
+    const opts = { status: 'all', type: 'all', sortDirection: 'desc' }
+    expect(filterAndSortAnomalies(anomalies, { ...opts, responsible: 'KWE' }).map((a) => a.id)).toEqual([1])
+    expect(filterAndSortAnomalies(anomalies, { ...opts, responsible: UNASSIGNED }).map((a) => a.id)).toEqual([2])
+  })
+
+  it('groups by responsible and counts distinct jobs', () => {
+    const groups = groupAnomaliesByResponsible([
+      makeAnomaly({ id: 1, responsible: 'KWE', job_id: 'A' }),
+      makeAnomaly({ id: 2, responsible: 'KWE', job_id: 'A' }),
+      makeAnomaly({ id: 3, responsible: 'KWE', job_id: 'B' }),
+      resolvedAfter(1, { id: 4, responsible: null, job_id: 'C' }),
+    ])
+
+    expect(groups.map((g) => [g.responsible, g.total, g.unresolved, g.jobCount])).toEqual([
+      ['KWE', 3, 3, 2],
+      [UNASSIGNED, 1, 0, 1],
+    ])
+  })
+
+  it('lists the responsibles of each job', () => {
+    const [group] = groupAnomaliesByJob([
+      makeAnomaly({ id: 1, responsible: 'KWE' }),
+      makeAnomaly({ id: 2, responsible: 'FLM' }),
+    ])
+    expect(group.responsibles).toEqual(['FLM', 'KWE'])
   })
 })

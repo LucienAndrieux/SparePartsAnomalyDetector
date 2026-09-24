@@ -1,33 +1,38 @@
+/*
+ * Design tokens.
+ * Une couleur de marque + 2 variations, le reste en neutres.
+ * #31C093 ne fait que 2,3:1 sur blanc : jamais utilisé pour du texte,
+ * uniquement pour des aplats (boutons avec texte foncé, barres, repères).
+ */
 :root {
-  --color-bg: #f5f6f8;
-  --color-surface: #ffffff;
-  --color-border: #e3e6eb;
-  --color-text: #1c2230;
-  --color-text-muted: #647084;
-  --color-accent: #2f5bd3;
-  --color-accent-soft: #e8eefc;
+  /* Marque */
+  --brand: #31c093; /* aplats, séries de données, focus */
+  --brand-strong: #007c56; /* texte et liens de marque (5,2:1 sur blanc), 2e série */
+  --brand-soft: #e9f8f2; /* fonds teintés */
 
-  --tone-amber-bg: #fdf1dc;
-  --tone-amber-fg: #8a5300;
-  --tone-amber-solid: #e0a23a;
-  --tone-violet-bg: #efeafd;
-  --tone-violet-fg: #5a3cb4;
-  --tone-violet-solid: #7c5ce0;
-  --tone-green-bg: #e3f4e8;
-  --tone-green-fg: #1f6b3a;
-  --tone-red-bg: #fbe6e6;
-  --tone-red-fg: #a12a2a;
-  --tone-neutral-bg: #eceef2;
-  --tone-neutral-fg: #4a5568;
+  /* Neutres */
+  --ink: #1a1f36;
+  --ink-muted: #5e6b7d;
+  --ink-subtle: #8792a2;
+  --surface: #ffffff;
+  --surface-subtle: #f6f8fa;
+  --border: #e3e8ee;
+  --border-strong: #d5dbe1;
 
-  --radius: 8px;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%);
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --shadow-popover: 0 0 0 1px rgb(26 31 54 / 6%), 0 8px 24px rgb(26 31 54 / 12%);
 
-  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  font-size: 15px;
+  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+
+  font-family: var(--font-sans);
+  font-size: 14px;
   line-height: 1.5;
-  color: var(--color-text);
-  background: var(--color-bg);
+  color: var(--ink);
+  background: var(--surface);
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
 }
 
@@ -39,22 +44,24 @@
 
 body {
   margin: 0;
-  background: var(--color-bg);
+  background: var(--surface);
 }
 
 h1,
+h2,
 p {
   margin: 0;
 }
 
 button,
-select {
+select,
+input {
   font: inherit;
   color: inherit;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--brand);
   outline-offset: 2px;
 }
 

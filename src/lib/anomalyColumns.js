@@ -2,7 +2,7 @@
  * Colonnes de `anomalies` exposées à l'application.
  * Doit rester aligné avec les GRANT de supabase/migrations : les colonnes
  * techniques de n8n (_row_number, _actual) n'y figurent volontairement pas.
- * Partagé entre le frontend et la fonction serverless.
+ * Partagé entre le frontend et le serveur Express (server/resolveAnomaly.js).
  */
 export const ANOMALY_COLUMNS = [
   'id',
@@ -10,6 +10,7 @@ export const ANOMALY_COLUMNS = [
   'client',
   'item',
   'supplier',
+  'responsible',
   'anomaly_type',
   'field_name',
   'description',

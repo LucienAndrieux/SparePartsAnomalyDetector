@@ -1,7 +1,8 @@
--- Une fois connecté (Supabase Auth), le client envoie le JWT de l'utilisateur :
--- les requêtes s'exécutent alors sous le rôle `authenticated`, plus `anon`.
--- Même accès en lecture, mêmes colonnes. Toujours aucune écriture directe :
--- la résolution passe par la fonction Netlify, qui vérifie le JWT.
+-- Rôle `authenticated` (utilisateurs Supabase Auth) : même accès en lecture que `anon`.
+-- Le dashboard n'utilise plus Supabase Auth (il lit toujours en `anon`) ; ces droits
+-- restent cohérents si un client connecté interroge la table.
+-- Toujours aucune écriture directe : la résolution passe par l'API du serveur
+-- (POST /api/resolve-anomaly), protégée par ADMIN_PASSWORD.
 
 revoke select on table public.anomalies from authenticated;
 

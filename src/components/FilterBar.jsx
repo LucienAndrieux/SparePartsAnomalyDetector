@@ -1,37 +1,68 @@
-import { ANOMALY_TYPES, STATUS_FILTERS } from '../lib/anomalies'
+import { ANOMALY_TYPES, STATUS_FILTERS, getResponsibleLabel } from '../lib/anomalies'
 
-export default function FilterBar({ status, type, onStatusChange, onTypeChange, resultCount }) {
+function FilterPill({ label, value, onChange, children }) {
+  return (
+    <label className={`filter-pill${value !== 'all' ? ' is-set' : ''}`}>
+      <span className="filter-pill-label">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {children}
+      </select>
+      <svg className="filter-pill-chevron" viewBox="0 0 12 12" aria-hidden="true">
+        <path d="m3 4.5 3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </label>
+  )
+}
+
+/**
+ * Filtres statut / type, et responsable si `responsibleOptions` est fourni.
+ * `onChange` reçoit un objet partiel, ex. { status: 'resolved' }.
+ */
+export default function FilterBar({ filters, onChange, responsibleOptions, resultCount, resultLabel }) {
+  const { status, type, responsible = 'all' } = filters
+  const hasFilters = status !== 'all' || type !== 'all' || (responsibleOptions && responsible !== 'all')
+
   return (
     <div className="filter-bar">
-      <div className="segmented" role="group" aria-label="Filtrer par statut">
+      <FilterPill label="Statut" value={status} onChange={(value) => onChange({ status: value })}>
         {STATUS_FILTERS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            className={status === option.value ? 'is-active' : undefined}
-            aria-pressed={status === option.value}
-            onClick={() => onStatusChange(option.value)}
-          >
+          <option key={option.value} value={option.value}>
             {option.label}
-          </button>
+          </option>
         ))}
-      </div>
+      </FilterPill>
 
-      <label className="select-field">
-        <span>Type</span>
-        <select value={type} onChange={(event) => onTypeChange(event.target.value)}>
-          <option value="all">Tous les types</option>
-          {Object.entries(ANOMALY_TYPES).map(([value, { label }]) => (
-            <option key={value} value={value}>
-              {label}
+      <FilterPill label="Type" value={type} onChange={(value) => onChange({ type: value })}>
+        <option value="all">Tous</option>
+        {Object.entries(ANOMALY_TYPES).map(([value, { label }]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </FilterPill>
+
+      {responsibleOptions && (
+        <FilterPill label="Responsable" value={responsible} onChange={(value) => onChange({ responsible: value })}>
+          <option value="all">Tous</option>
+          {responsibleOptions.map((key) => (
+            <option key={key} value={key}>
+              {getResponsibleLabel(key)}
             </option>
           ))}
-        </select>
-      </label>
+        </FilterPill>
+      )}
 
-      <span className="result-count">
-        {resultCount} résultat{resultCount > 1 ? 's' : ''}
-      </span>
+      {hasFilters && (
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => onChange({ status: 'all', type: 'all', responsible: 'all' })}
+        >
+          Réinitialiser
+        </button>
+      )}
+
+      <span className="result-count">{resultLabel(resultCount)}</span>
     </div>
   )
 }

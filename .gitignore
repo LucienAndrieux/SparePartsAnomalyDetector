@@ -13,9 +13,6 @@ dist-ssr
 *.local
 .env
 
-# Netlify
-.netlify
-deno.lock
 
 # Supabase CLI
 supabase/.temp

@@ -1,45 +1,38 @@
 import { useMemo } from 'react'
 import { ANOMALY_TYPES, computeKpis } from '../lib/anomalies'
+import Stat from './Stat'
 
 const percentFormatter = new Intl.NumberFormat('fr-FR', {
   style: 'percent',
   maximumFractionDigits: 0,
 })
 
-function KpiCard({ label, value, hint, children }) {
-  return (
-    <div className="kpi-card">
-      <span className="kpi-label">{label}</span>
-      {value !== undefined && <span className="kpi-value">{value}</span>}
-      {hint && <span className="kpi-hint">{hint}</span>}
-      {children}
-    </div>
-  )
-}
-
 function TypeBreakdown({ byType, total }) {
+  const types = Object.entries(ANOMALY_TYPES)
+
   return (
     <>
-      <div className="type-bar" aria-hidden="true">
-        {Object.entries(ANOMALY_TYPES).map(([type, { tone }]) => (
-          <span
-            key={type}
-            className={`type-bar-segment tone-${tone}`}
-            style={{ flexGrow: byType[type] ?? 0 }}
-          />
-        ))}
+      <div className="split-bar" aria-hidden="true">
+        {types.map(([type, { label, series }]) =>
+          byType[type] > 0 ? (
+            <span
+              key={type}
+              className={`split-bar-segment series-${series}`}
+              style={{ flexGrow: byType[type] }}
+              title={`${label} : ${byType[type]}`}
+            />
+          ) : null,
+        )}
       </div>
-      <ul className="type-legend">
-        {Object.entries(ANOMALY_TYPES).map(([type, { label, tone }]) => {
+      <ul className="legend">
+        {types.map(([type, { label, series }]) => {
           const count = byType[type] ?? 0
           return (
             <li key={type}>
-              <span className={`legend-dot tone-${tone}`} />
-              {label}
-              <strong>{count}</strong>
-              {total > 0 && (
-                <span className="legend-share">{percentFormatter.format(count / total)}</span>
-              )}
+              <span className={`legend-swatch series-${series}`} aria-hidden="true" />
+              <span className="legend-label">{label}</span>
+              <span className="legend-value">{count}</span>
+              <span className="legend-share">{total > 0 ? percentFormatter.format(count / total) : '—'}</span>
             </li>
           )
         })}
@@ -50,23 +43,24 @@ function TypeBreakdown({ byType, total }) {
 
 export default function KpiBar({ anomalies }) {
   const kpis = useMemo(() => computeKpis(anomalies), [anomalies])
+  const plural = (n) => (n > 1 ? 's' : '')
 
   return (
-    <section className="kpi-bar" aria-label="Indicateurs clés">
-      <KpiCard label="Anomalies détectées" value={kpis.total} />
-      <KpiCard
+    <section className="stats" aria-label="Indicateurs clés">
+      <Stat label="Anomalies détectées" value={kpis.total} />
+      <Stat
         label="Non résolues"
         value={kpis.unresolved}
         hint={kpis.total > 0 ? `${percentFormatter.format(kpis.unresolved / kpis.total)} du total` : null}
       />
-      <KpiCard
+      <Stat
         label="Résolues sous 48h"
         value={kpis.slaRate === null ? '—' : percentFormatter.format(kpis.slaRate)}
-        hint={`sur ${kpis.resolvedCount} anomalie${kpis.resolvedCount > 1 ? 's' : ''} résolue${kpis.resolvedCount > 1 ? 's' : ''}`}
+        hint={`sur ${kpis.resolvedCount} anomalie${plural(kpis.resolvedCount)} résolue${plural(kpis.resolvedCount)}`}
       />
-      <KpiCard label="Répartition par type">
+      <Stat label="Répartition par type">
         <TypeBreakdown byType={kpis.byType} total={kpis.total} />
-      </KpiCard>
+      </Stat>
     </section>
   )
 }
