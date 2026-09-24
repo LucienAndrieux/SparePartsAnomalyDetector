@@ -48,7 +48,7 @@ React 19 · Vite · Express 5 · Supabase (`@supabase/supabase-js`) · Vitest ·
 
 ### 1. Base de données
 
-Appliquer dans l'ordre les migrations de [`supabase/migrations/`](supabase/migrations/), via le SQL Editor Supabase ou `supabase db push`.
+La table `anomalies` doit être en lecture seule pour `anon` et `authenticated` (GRANT SELECT limité aux colonnes de [`src/lib/anomalyColumns.js`](src/lib/anomalyColumns.js), RLS activée avec une policy SELECT, aucun droit d'écriture). Les écritures passent uniquement par le serveur (clé service role).
 
 ### 2. Comptes utilisateurs
 
@@ -145,7 +145,6 @@ src/
     ├── FilterBar.jsx, ViewSwitcher.jsx
     ├── Badges.jsx, ResolveAction.jsx
     └── AuthControls.jsx, LoginForm.jsx
-supabase/migrations/           Droits d'accès et colonnes de la table
 ```
 
 ## Limites connues
