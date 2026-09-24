@@ -1,6 +1,6 @@
 # Spare Parts Anomaly Detector
 
-Dashboard de suivi des anomalies détectées sur des commandes de pièces détachées : champs obligatoires vides, dates incohérentes…
+Dashboard de suivi des anomalies détectées sur des commandes de pièces détachées : champs obligatoires vides, dates incohérentes, statut (A à E) incohérent avec les dates…
 
 ## Architecture
 

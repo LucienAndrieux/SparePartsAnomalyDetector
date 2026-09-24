@@ -368,6 +368,10 @@
   background: var(--brand-strong);
 }
 
+.series-3 {
+  background: var(--series-3);
+}
+
 .legend {
   display: flex;
   flex-direction: column;
@@ -584,6 +588,14 @@
 .badge-icon {
   width: 12px;
   height: 12px;
+}
+
+/* Pastille de la couleur de série du type (mêmes couleurs que la répartition par type) */
+.badge-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
 }
 
 .badge-success {

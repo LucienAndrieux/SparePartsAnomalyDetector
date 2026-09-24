@@ -1,6 +1,6 @@
 /*
  * Design tokens.
- * Une couleur de marque + 2 variations, le reste en neutres.
+ * Une couleur de marque + 2 variations, une couleur de série supplémentaire, le reste en neutres.
  * #31C093 ne fait que 2,3:1 sur blanc : jamais utilisé pour du texte,
  * uniquement pour des aplats (boutons avec texte foncé, barres, repères).
  */
@@ -9,6 +9,7 @@
   --brand: #31c093; /* aplats, séries de données, focus */
   --brand-strong: #007c56; /* texte et liens de marque (5,2:1 sur blanc), 2e série */
   --brand-soft: #e9f8f2; /* fonds teintés */
+  --series-3: #6772e5; /* 3e série de données (indigo, 4,3:1 sur blanc) */
 
   /* Neutres */
   --ink: #1a1f36;

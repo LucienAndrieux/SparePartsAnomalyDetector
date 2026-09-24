@@ -1,8 +1,15 @@
-import { UNASSIGNED, formatDateTime, getAnomalyTypeLabel, getResponsibleLabel } from '../lib/anomalies'
+import { ANOMALY_TYPES, UNASSIGNED, formatDateTime, getAnomalyTypeLabel, getResponsibleLabel } from '../lib/anomalies'
 import { responsibleHref } from '../lib/routes'
 
+/** Type d'anomalie, précédé de sa couleur de série (aucune pour un type inconnu). */
 export function TypeBadge({ type }) {
-  return <span className="badge">{getAnomalyTypeLabel(type)}</span>
+  const series = ANOMALY_TYPES[type]?.series
+  return (
+    <span className="badge">
+      {series && <span className={`badge-dot series-${series}`} aria-hidden="true" />}
+      {getAnomalyTypeLabel(type)}
+    </span>
+  )
 }
 
 /** Statut porté par une icône + un libellé, jamais par la couleur seule. */

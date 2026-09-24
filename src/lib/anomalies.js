@@ -1,7 +1,8 @@
-// L'ordre fixe la couleur de série (1 = vert marque, 2 = vert foncé) : elle suit le type, jamais son rang.
+// Chaque type a sa couleur de série (1 = vert marque, 2 = vert foncé, 3 = indigo) : elle suit le type, jamais son rang.
 export const ANOMALY_TYPES = {
   champ_manquant: { label: 'Champ manquant', series: 1 },
   date_incoherente: { label: 'Date incohérente', series: 2 },
+  statut_incoherent: { label: 'Statut incohérent', series: 3 },
 }
 
 export const STATUS_LABELS = {

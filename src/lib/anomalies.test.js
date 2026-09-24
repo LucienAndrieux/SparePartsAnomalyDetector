@@ -47,7 +47,7 @@ describe('computeKpis', () => {
       unresolved: 0,
       slaRate: null,
       resolvedCount: 0,
-      byType: { champ_manquant: 0, date_incoherente: 0 },
+      byType: { champ_manquant: 0, date_incoherente: 0, statut_incoherent: 0 },
     })
   })
 
@@ -55,12 +55,13 @@ describe('computeKpis', () => {
     const kpis = computeKpis([
       makeAnomaly({ id: 1 }),
       makeAnomaly({ id: 2, anomaly_type: 'date_incoherente' }),
+      makeAnomaly({ id: 4, anomaly_type: 'statut_incoherent' }),
       resolvedAfter(1, { id: 3 }),
     ])
 
-    expect(kpis.total).toBe(3)
-    expect(kpis.unresolved).toBe(2)
-    expect(kpis.byType).toEqual({ champ_manquant: 2, date_incoherente: 1 })
+    expect(kpis.total).toBe(4)
+    expect(kpis.unresolved).toBe(3)
+    expect(kpis.byType).toEqual({ champ_manquant: 2, date_incoherente: 1, statut_incoherent: 1 })
   })
 
   it('computes the 48h rate over resolved anomalies only', () => {
@@ -120,6 +121,12 @@ describe('filterAndSortAnomalies', () => {
     expect(ids(result)).toEqual([2])
   })
 
+  it('filters by the statut_incoherent type', () => {
+    const withStatus = [...anomalies, makeAnomaly({ id: 4, anomaly_type: 'statut_incoherent' })]
+    const result = filterAndSortAnomalies(withStatus, { status: 'all', type: 'statut_incoherent', sortDirection: 'desc' })
+    expect(ids(result)).toEqual([4])
+  })
+
   it('does not mutate the input array', () => {
     const copy = [...anomalies]
     filterAndSortAnomalies(anomalies, { status: 'all', type: 'all', sortDirection: 'asc' })
@@ -160,10 +167,11 @@ describe('listFilterOptions', () => {
       makeAnomaly({ id: 1, anomaly_type: 'date_incoherente', responsible: 'KWE' }),
       makeAnomaly({ id: 2, anomaly_type: 'doublon', responsible: null }),
       makeAnomaly({ id: 3, anomaly_type: 'champ_manquant', responsible: 'KWE' }),
+      makeAnomaly({ id: 4, anomaly_type: 'statut_incoherent', responsible: 'KWE' }),
     ])
     expect(options).toEqual({
       statuses: ['unresolved'],
-      types: ['champ_manquant', 'date_incoherente', 'doublon'],
+      types: ['champ_manquant', 'date_incoherente', 'statut_incoherent', 'doublon'],
       responsibles: ['KWE', UNASSIGNED],
     })
   })
