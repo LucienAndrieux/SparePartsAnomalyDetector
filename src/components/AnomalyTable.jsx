@@ -30,7 +30,7 @@ export default function AnomalyTable({
                 <span aria-hidden="true">{sortDirection === 'desc' ? '↓' : '↑'}</span>
               </button>
             </th>
-            {showResponsible && <th scope="col">Resp.</th>}
+            {showResponsible && <th scope="col">Responsable</th>}
             <th scope="col">Statut</th>
             {canResolve && (
               <th scope="col">
