@@ -1,121 +1,73 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useMemo, useState } from 'react'
+import AnomalyTable from './components/AnomalyTable'
+import FilterBar from './components/FilterBar'
+import KpiBar from './components/KpiBar'
+import { useAnomalies } from './hooks/useAnomalies'
+import { filterAndSortAnomalies } from './lib/anomalies'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const { anomalies, loading, error, refetch, resolveAnomaly } = useAnomalies()
+  const [status, setStatus] = useState('all')
+  const [type, setType] = useState('all')
+  const [sortDirection, setSortDirection] = useState('desc')
+
+  const visibleAnomalies = useMemo(
+    () => filterAndSortAnomalies(anomalies, { status, type, sortDirection }),
+    [anomalies, status, type, sortDirection],
+  )
+
+  const toggleSort = () => setSortDirection((dir) => (dir === 'desc' ? 'asc' : 'desc'))
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
+    <div className="app">
+      <header className="app-header">
         <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
+          <h1>Anomalies pièces détachées</h1>
+          <p className="subtitle">Contrôles automatiques des commandes, issus du pipeline n8n</p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
+        <button type="button" className="button-secondary" onClick={refetch} disabled={loading}>
+          {loading ? 'Chargement…' : 'Actualiser'}
         </button>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
+      <main>
+        {error ? (
+          <div className="state-message state-error" role="alert">
+            <p>
+              <strong>Impossible de charger les anomalies.</strong> {error}
+            </p>
+            <button type="button" className="button-secondary" onClick={refetch}>
+              Réessayer
+            </button>
+          </div>
+        ) : loading && anomalies.length === 0 ? (
+          <p className="state-message" aria-busy="true">
+            Chargement des anomalies…
+          </p>
+        ) : (
+          <>
+            <KpiBar anomalies={anomalies} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+            <section className="panel" aria-label="Liste des anomalies">
+              <FilterBar
+                status={status}
+                type={type}
+                onStatusChange={setStatus}
+                onTypeChange={setType}
+                resultCount={visibleAnomalies.length}
+              />
+              <AnomalyTable
+                anomalies={visibleAnomalies}
+                sortDirection={sortDirection}
+                onToggleSort={toggleSort}
+                onResolve={resolveAnomaly}
+              />
+            </section>
+          </>
+        )}
+      </main>
+    </div>
   )
 }
 

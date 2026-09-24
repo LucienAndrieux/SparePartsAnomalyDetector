@@ -11,6 +11,14 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+
+# Netlify
+.netlify
+deno.lock
+
+# Supabase CLI
+supabase/.temp
 
 # Editor directories and files
 .vscode/*
