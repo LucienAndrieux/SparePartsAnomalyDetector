@@ -30,11 +30,6 @@ export default async function handler(request) {
     })
   }
 
-  if (!supabase) {
-    console.error('resolve-anomaly: SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant')
-    return json(500, { error: 'Configuration serveur incomplète' })
-  }
-
   let id
   try {
     ;({ id } = await request.json())
@@ -44,6 +39,11 @@ export default async function handler(request) {
 
   if (!Number.isInteger(id) || id <= 0) {
     return json(400, { error: 'Le champ "id" doit être un entier positif' })
+  }
+
+  if (!supabase) {
+    console.error('resolve-anomaly: SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant')
+    return json(500, { error: 'Configuration serveur incomplète' })
   }
 
   const { data, error } = await supabase
