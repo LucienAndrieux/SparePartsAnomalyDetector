@@ -23,4 +23,4 @@ dist-ssr
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
+.mcp.json
