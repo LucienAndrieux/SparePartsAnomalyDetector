@@ -118,10 +118,10 @@ En développement, Vite relaie `/api` vers le serveur Express. Pour tester « Ma
 1. Sur le serveur, dans le dossier du projet : `npm ci`, créer `.env`, puis `npm run build`.
 2. Installer le service avec [NSSM](https://nssm.cc/). Le serveur charge `.env` par rapport à son propre fichier : le dossier de démarrage n'a pas d'importance.
    ```powershell
-   nssm install SparePartsDashboard "C:\Program Files\nodejs\node.exe" "C:\apps\spare-parts\server\index.js"
-   nssm set SparePartsDashboard AppStdout C:\apps\spare-parts\logs\server.log
-   nssm set SparePartsDashboard AppStderr C:\apps\spare-parts\logs\server.log
-   nssm start SparePartsDashboard
+   nssm install anomaly-dashboard "C:\Program Files\nodejs\node.exe" "C:\showcase\anomaly-dashboard\server\index.js"
+   nssm set anomaly-dashboard AppStdout C:\showcase\logs\dashboard.log
+   nssm set anomaly-dashboard AppStderr C:\showcase\logs\dashboard.log
+   nssm start anomaly-dashboard
    ```
 3. Configurer Caddy (`Caddyfile`). Caddy obtient et renouvelle le certificat HTTPS tout seul :
    ```
@@ -129,7 +129,9 @@ En développement, Vite relaie `/api` vers le serveur Express. Pour tester « Ma
        reverse_proxy 127.0.0.1:3000
    }
    ```
-4. Pour une mise à jour : `git pull`, `npm ci`, `npm run build`, puis `nssm restart SparePartsDashboard`.
+4. Pour une mise à jour, lancer [`scripts/deploy.bat`](scripts/deploy.bat) : `git pull`, `npm ci`, `npm run build`, puis `nssm restart anomaly-dashboard`, avec arrêt à la première erreur (le service n'est pas redémarré si le build échoue).
+   - sur le VPS : double-clic sur `C:\showcase\anomaly-dashboard\scripts\deploy.bat` (demande les droits administrateur) ;
+   - à distance, par SSH avec un compte administrateur : `ssh <admin>@<vps> "C:\showcase\anomaly-dashboard\scripts\deploy.bat --auto"` (ni fenêtre ni pause, code de sortie 1 en cas d'erreur).
 
 ## Structure
 
@@ -141,6 +143,8 @@ server/
 ├── verifyResolution.js        Client du webhook n8n de vérification
 ├── auth.js                    Lecture du jeton Bearer, limitation des échecs
 └── tests/                     Tests du serveur (faux client Supabase)
+scripts/
+└── deploy.bat                 Déploiement sur le VPS (pull, install, build, redémarrage)
 src/
 ├── lib/
 │   ├── supabaseClient.js      Clients Supabase : lecture (anon) et authentification

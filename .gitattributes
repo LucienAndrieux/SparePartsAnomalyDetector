@@ -1,0 +1,2 @@
+# cmd.exe interprète mal les .bat en fins de ligne LF (labels, goto)
+*.bat text eol=crlf
