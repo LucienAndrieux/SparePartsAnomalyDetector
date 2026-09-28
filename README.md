@@ -19,16 +19,24 @@ Google Sheets ──► n8n + LLM (Groq) ──► Supabase ──► Dashboard 
 ### Sécurité
 
 ```
-Navigateur ──lecture (clé anon)─────────────────────────► Supabase
-    │                                                         ▲
-    └──POST /api/resolve-anomaly + jeton de session──► Express ┘
-                                             (vérifie le jeton,
-                                              écrit avec la clé service_role)
+Navigateur ──lecture (clé anon)──────────────────────────────► Supabase
+    │                                                              ▲
+    └──POST /api/resolve-anomaly + jeton de session──► Express     │ écrit resolved,
+                                                   (vérifie le     │ verification_status…
+                                                    jeton, lit     │
+                                                    _row_number)   │
+                                                         │         │
+                                          webhook + X-Verify-Secret│
+                                                         ▼         │
+                                     n8n « Verify Anomaly Resolution »
+                                     (relit la ligne du Google Sheets,
+                                      la fait ré-analyser par le LLM)
 ```
 
 - **Lecture** : le navigateur utilise uniquement la clé anon. Les rôles `anon` et `authenticated` n'ont que le droit `SELECT`, et seulement sur les colonnes métier. Les colonnes techniques de n8n (`_row_number`, `_actual`) sont exclues par des `GRANT` au niveau des colonnes.
-- **Écriture** : seul le serveur Express écrit, avec la clé `service_role`. Elle est lue dans `process.env` sans préfixe `VITE_`, donc elle n'est jamais incluse dans le bundle client.
-- **Résolution réservée aux comptes connectés** : l'utilisateur se connecte par email et mot de passe (Supabase Auth). `POST /api/resolve-anomaly` exige son jeton de session (`Authorization: Bearer …`), que le serveur vérifie auprès de Supabase Auth avant d'écrire. Chaque résolution est journalisée avec l'email de son auteur. Une IP est bloquée 15 minutes après 5 jetons invalides.
+- **Écriture** : le navigateur n'écrit jamais. Le serveur Express lit l'anomalie avec la clé `service_role` (lue dans `process.env` sans préfixe `VITE_`, donc jamais incluse dans le bundle client), et c'est le workflow n8n qui écrit le résultat de la vérification en base.
+- **Résolution vérifiée** : « Marquer comme résolu » appelle le webhook n8n *Verify Anomaly Resolution*, protégé par un secret partagé (`X-Verify-Secret`, connu seulement du serveur et de n8n). n8n relit la ligne dans le Google Sheets et la fait ré-analyser par le LLM. L'anomalie n'est marquée résolue que si elle a disparu ; sinon, ou si le LLM échoue, seul `verification_status` change (`not_corrected` ou `verification_failed`).
+- **Résolution réservée aux comptes connectés** : l'utilisateur se connecte par email et mot de passe (Supabase Auth). `POST /api/resolve-anomaly` exige son jeton de session (`Authorization: Bearer …`), que le serveur vérifie auprès de Supabase Auth avant de lancer la vérification. Chaque résolution est journalisée avec l'email de son auteur. Une IP est bloquée 15 minutes après 5 jetons invalides.
 - **Lecture toujours anonyme** : même connecté, le dashboard lit avec un client distinct, sans session. La session ne sert qu'à autoriser les écritures.
 - **Réseau** : le serveur n'écoute que sur `127.0.0.1`. Seul Caddy, sur la même machine, peut le joindre.
 
@@ -37,7 +45,7 @@ Navigateur ──lecture (clé anon)──────────────�
 - **Indicateurs clés** : total, non résolues, taux de résolution sous 48h, répartition par type.
 - **Trois vues** : toutes les anomalies, **par job** et **par responsable**. Chaque job et chaque responsable a sa propre page, et les URL (`#jobs/7617`, `#responsibles/KWE`) sont partageables.
 - **Filtres** par statut, type et responsable ; tri par date de détection.
-- **Résolution** : mise à jour optimiste, annulée si le serveur renvoie une erreur.
+- **Résolution vérifiée** : la correction est contrôlée dans le Google Sheets avant d'être confirmée (quelques secondes). En cas de refus, le message s'affiche et le statut indique « Vérif. : non corrigée » ou « Vérif. : échouée ».
 - Affichage responsive : sur mobile, les tables deviennent des listes de cartes.
 
 ## Stack
@@ -48,7 +56,13 @@ React 19 · Vite · Express 5 · Supabase (`@supabase/supabase-js`) · Vitest ·
 
 ### 1. Base de données
 
-La table `anomalies` doit être en lecture seule pour `anon` et `authenticated` (GRANT SELECT limité aux colonnes de [`src/lib/anomalyColumns.js`](src/lib/anomalyColumns.js), RLS activée avec une policy SELECT, aucun droit d'écriture). Les écritures passent uniquement par le serveur (clé service role).
+La table `anomalies` doit être en lecture seule pour `anon` et `authenticated` (GRANT SELECT limité aux colonnes de [`src/lib/anomalyColumns.js`](src/lib/anomalyColumns.js), RLS activée avec une policy SELECT, aucun droit d'écriture). Les écritures passent uniquement par n8n (clé service role).
+
+Colonnes alimentées par la vérification : `resolved_by` (text) et `verification_status` (text : `confirmed`, `not_corrected`, `verification_failed`). Elles doivent être lisibles par le frontend :
+
+```sql
+grant select (resolved_by, verification_status) on public.anomalies to anon, authenticated;
+```
 
 ### 2. Comptes utilisateurs
 
@@ -69,6 +83,8 @@ cp .env.example .env
 | `VITE_SUPABASE_ANON_KEY` | frontend (build) | oui (lecture seule) |
 | `VITE_GOOGLE_SHEET_URL` | frontend (build), bouton « Google Sheets » masqué si vide | oui |
 | `SUPABASE_SERVICE_ROLE_KEY` | serveur | **non** |
+| `N8N_VERIFY_WEBHOOK_URL` | serveur : URL de production du webhook n8n (workflow actif) | — |
+| `N8N_VERIFY_SECRET` | serveur : valeur de l'en-tête `X-Verify-Secret` | **non** |
 | `PORT` | serveur (défaut `3000`) | — |
 
 Les variables `VITE_*` sont intégrées au moment du build : il faut relancer `npm run build` après les avoir modifiées.
@@ -122,6 +138,7 @@ server/
 ├── index.js                   Point d'entrée : .env, client Supabase, écoute sur 127.0.0.1
 ├── app.js                     Application Express : API + build statique + fallback SPA
 ├── resolveAnomaly.js          POST /api/resolve-anomaly
+├── verifyResolution.js        Client du webhook n8n de vérification
 ├── auth.js                    Lecture du jeton Bearer, limitation des échecs
 └── tests/                     Tests du serveur (faux client Supabase)
 src/
@@ -131,7 +148,7 @@ src/
 │   ├── anomalyColumns.js      Colonnes exposées (partagé avec le serveur)
 │   └── routes.js              Routage par hash (#jobs/…, #responsibles/…)
 ├── hooks/
-│   ├── useAnomalies.js        Chargement, états, résolution optimiste
+│   ├── useAnomalies.js        Chargement, états, résolution vérifiée
 │   ├── useAuth.js             Session Supabase Auth (email + mot de passe)
 │   └── useHashRoute.js        Route courante et navigation
 ├── App.jsx                    Orchestration : données, session, filtres, choix de la page
@@ -153,6 +170,7 @@ src/
 ## Limites connues
 
 - Tous les comptes connectés ont les mêmes droits (pas de rôles) : l'accès se contrôle en créant ou supprimant des comptes dans Supabase.
-- L'auteur d'une résolution est journalisé par le serveur, mais pas enregistré en base.
+- L'auteur d'une résolution est journalisé par le serveur ; en base, `resolved_by` vaut pour l'instant l'acronyme fixe `TST`.
+- La résolution dépend de n8n et de Groq : si le workflow est inactif ou injoignable, aucune anomalie ne peut être résolue. Le LLM peut aussi, rarement, ne pas signaler une anomalie encore présente.
 - La limitation des tentatives est en mémoire : elle repart de zéro au redémarrage du service.
-- L'heure de `resolved_at` est celle du serveur Node, pas `now()` côté Postgres.
+- L'heure de `resolved_at` est celle du serveur n8n, pas `now()` côté Postgres.

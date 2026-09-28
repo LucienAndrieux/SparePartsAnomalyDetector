@@ -16,7 +16,7 @@ export function TypeBadge({ type }) {
 export function StatusBadge({ anomaly }) {
   if (anomaly.resolved) {
     return (
-      <span className="badge badge-success" title={`Résolue le ${formatDateTime(anomaly.resolved_at)}`}>
+      <span className="badge badge-success" title={getResolvedTitle(anomaly)}>
         <svg className="badge-icon" viewBox="0 0 12 12" aria-hidden="true">
           <path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -31,6 +31,34 @@ export function StatusBadge({ anomaly }) {
         <circle cx="6" cy="6" r="3.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
       </svg>
       Non résolue
+    </span>
+  )
+}
+
+function getResolvedTitle(anomaly) {
+  const by = anomaly.resolved_by ? ` par ${anomaly.resolved_by}` : ''
+  const verified = anomaly.verification_status === 'confirmed' ? ', correction vérifiée dans le Google Sheets' : ''
+  return `Résolue le ${formatDateTime(anomaly.resolved_at)}${by}${verified}`
+}
+
+const VERIFICATION_NOTES = {
+  not_corrected: {
+    label: 'Vérif. : non corrigée',
+    title: "Lors de la dernière demande de résolution, l'anomalie était toujours présente dans le Google Sheets.",
+  },
+  verification_failed: {
+    label: 'Vérif. : échouée',
+    title: "La dernière vérification n'a pas pu aboutir (LLM indisponible ou réponse invalide).",
+  },
+}
+
+/** Résultat de la dernière vérification refusée ou échouée, sous le statut d'une anomalie non résolue. */
+export function VerificationNote({ anomaly }) {
+  const note = !anomaly.resolved && VERIFICATION_NOTES[anomaly.verification_status]
+  if (!note) return null
+  return (
+    <span className="cell-sub" title={note.title}>
+      {note.label}
     </span>
   )
 }

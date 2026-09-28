@@ -17,4 +17,6 @@ export const ANOMALY_COLUMNS = [
   'detected_at',
   'resolved',
   'resolved_at',
+  'resolved_by',
+  'verification_status',
 ].join(',')

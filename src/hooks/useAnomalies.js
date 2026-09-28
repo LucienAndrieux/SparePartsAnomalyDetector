@@ -36,7 +36,10 @@ async function postResolveAnomaly(id) {
 
   const payload = await response.json().catch(() => null)
   if (!response.ok) {
-    throw new Error(payload?.error ?? `Erreur serveur (${response.status})`)
+    const error = new Error(payload?.error ?? `Erreur serveur (${response.status})`)
+    // Vérification refusée ou échouée : le serveur renvoie l'état à jour (verification_status).
+    error.anomaly = payload?.anomaly
+    throw error
   }
   return payload.anomaly
 }
@@ -74,22 +77,20 @@ export function useAnomalies() {
   }, [])
 
   /**
-   * Marque une anomalie comme résolue via l'API du serveur.
-   * Mise à jour optimiste, annulée si l'appel échoue (l'erreur est relancée
-   * pour que l'appelant puisse l'afficher).
+   * Demande la résolution d'une anomalie via l'API du serveur, qui fait d'abord vérifier
+   * la correction dans le Google Sheets (plusieurs secondes). Pas de mise à jour optimiste :
+   * la vérification peut refuser. En cas de refus, l'erreur est relancée pour que
+   * l'appelant affiche le message, après avoir appliqué l'état renvoyé par le serveur.
    */
   const resolveAnomaly = useCallback(async (id) => {
-    const optimisticResolvedAt = new Date().toISOString()
     const patch = (changes) =>
       setAnomalies((current) => current.map((a) => (a.id === id ? { ...a, ...changes } : a)))
-
-    patch({ resolved: true, resolved_at: optimisticResolvedAt })
 
     try {
       const updated = await postResolveAnomaly(id)
       if (updated) patch(updated)
     } catch (err) {
-      patch({ resolved: false, resolved_at: null })
+      if (err.anomaly) patch(err.anomaly)
       throw err
     }
   }, [])

@@ -7,22 +7,27 @@ import { createFailureLimiter } from '../auth.js'
 
 const VALID_TOKEN = 'valid.jwt.token'
 
-/** Faux client Supabase : n'accepte que VALID_TOKEN, enregistre l'update et renvoie `result`. */
-function fakeSupabase(result) {
+/**
+ * Faux client Supabase : n'accepte que VALID_TOKEN, enregistre les appels et renvoie
+ * `results` dans l'ordre des lectures (le dernier est répété).
+ */
+function fakeSupabase(...results) {
   const calls = []
+  let reads = 0
   const builder = {
     update(values) {
       calls.push({ update: values })
       return builder
     },
-    select() {
+    select(columns) {
+      calls.push({ select: columns })
       return builder
     },
     eq(column, value) {
       calls.push({ eq: [column, value] })
       return builder
     },
-    maybeSingle: async () => result,
+    maybeSingle: async () => results[Math.min(reads++, results.length - 1)],
   }
   const auth = {
     getUser: async (token) =>
@@ -33,15 +38,28 @@ function fakeSupabase(result) {
   return { client: { from: () => builder, auth }, calls }
 }
 
+const PENDING = { data: { id: 1, anomaly_type: 'champ_manquant', field_name: 'Qty', resolved: false, _row_number: 7 }, error: null }
+const RESOLVED = { data: { id: 1, resolved: true, verification_status: 'confirmed' }, error: null }
+const NOT_CORRECTED = { data: { id: 1, resolved: false, verification_status: 'not_corrected' }, error: null }
+
+/** Faux webhook n8n : renvoie `verdict` (ou lève `verdict` si c'est une Error) et garde les appels. */
+function fakeVerifier(verdict) {
+  return vi.fn(async () => {
+    if (verdict instanceof Error) throw verdict
+    return verdict
+  })
+}
+
 let distDir
 let server
 let baseUrl
 let supabase
+let verifyResolution
 let limiter
 
 async function start(options) {
   if (server) await new Promise((resolve) => server.close(resolve))
-  const app = createApp({ distDir, supabase: supabase.client, limiter, ...options })
+  const app = createApp({ distDir, supabase: supabase.client, verifyResolution, limiter, ...options })
   server = app.listen(0, '127.0.0.1')
   await new Promise((resolve) => server.once('listening', resolve))
   baseUrl = `http://127.0.0.1:${server.address().port}`
@@ -64,7 +82,8 @@ beforeAll(() => {
 })
 
 beforeEach(async () => {
-  supabase = fakeSupabase({ data: { id: 1, resolved: true }, error: null })
+  supabase = fakeSupabase(PENDING, RESOLVED)
+  verifyResolution = fakeVerifier({ confirmed: true, message: null })
   limiter = createFailureLimiter()
   await start()
 })
@@ -75,12 +94,63 @@ afterAll(async () => {
 })
 
 describe('POST /api/resolve-anomaly', () => {
-  it('resolves the anomaly for a signed-in user', async () => {
+  it('resolves the anomaly once n8n confirms the correction', async () => {
     const response = await resolveRequest('{"id":1}')
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ anomaly: { id: 1, resolved: true } })
-    expect(supabase.calls[0].update.resolved).toBe(true)
+    expect(await response.json()).toEqual({ anomaly: RESOLVED.data })
+    expect(verifyResolution).toHaveBeenCalledWith({
+      anomalyId: 1,
+      rowNumber: 7,
+      anomalyType: 'champ_manquant',
+      fieldName: 'Qty',
+    })
     expect(supabase.calls).toContainEqual({ eq: ['id', 1] })
+  })
+
+  it('never writes to the database itself (n8n does)', async () => {
+    await resolveRequest('{"id":1}')
+    expect(supabase.calls.some((call) => call.update)).toBe(false)
+  })
+
+  it('does not return the technical _row_number column', async () => {
+    supabase = fakeSupabase({ data: { ...PENDING.data, resolved: true } })
+    await start()
+    const body = await (await resolveRequest('{"id":1}')).json()
+    expect(body.anomaly).not.toHaveProperty('_row_number')
+  })
+
+  it('returns 409 with the n8n message and the updated anomaly when not corrected', async () => {
+    supabase = fakeSupabase(PENDING, NOT_CORRECTED)
+    verifyResolution = fakeVerifier({ confirmed: false, message: 'Pas encore corrigée.' })
+    await start()
+    const response = await resolveRequest('{"id":1}')
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: 'Pas encore corrigée.', anomaly: NOT_CORRECTED.data })
+  })
+
+  it('returns 502 without leaking details when the verification fails', async () => {
+    verifyResolution = fakeVerifier(new Error('connect ECONNREFUSED secret-host'))
+    await start()
+    const response = await resolveRequest('{"id":1}')
+    expect(response.status).toBe(502)
+    const text = await response.text()
+    expect(text).toContain('vérification')
+    expect(text).not.toContain('secret-host')
+  })
+
+  it('returns an already resolved anomaly without calling n8n', async () => {
+    supabase = fakeSupabase(RESOLVED)
+    await start()
+    const response = await resolveRequest('{"id":1}')
+    expect(response.status).toBe(200)
+    expect(verifyResolution).not.toHaveBeenCalled()
+  })
+
+  it('returns 422 when the anomaly has no sheet row number', async () => {
+    supabase = fakeSupabase({ data: { ...PENDING.data, _row_number: null }, error: null })
+    await start()
+    expect((await resolveRequest('{"id":1}')).status).toBe(422)
+    expect(verifyResolution).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -101,8 +171,11 @@ describe('POST /api/resolve-anomaly', () => {
     expect(Number(response.headers.get('Retry-After'))).toBeGreaterThan(0)
   })
 
-  it('returns 500 when the server has no Supabase configuration', async () => {
-    await start({ supabase: null })
+  it.each([
+    ['Supabase', { supabase: null }],
+    ['n8n webhook', { verifyResolution: null }],
+  ])('returns 500 when the server has no %s configuration', async (_label, options) => {
+    await start(options)
     expect((await resolveRequest('{"id":1}')).status).toBe(500)
   })
 
@@ -122,6 +195,7 @@ describe('POST /api/resolve-anomaly', () => {
     supabase = fakeSupabase({ data: null, error: null })
     await start()
     expect((await resolveRequest('{"id":999}')).status).toBe(404)
+    expect(verifyResolution).not.toHaveBeenCalled()
   })
 
   it('returns 500 without leaking database errors', async () => {

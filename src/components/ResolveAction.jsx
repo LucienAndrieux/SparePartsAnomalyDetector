@@ -19,7 +19,7 @@ export default function ResolveAction({ anomalyId, onResolve }) {
   return (
     <>
       <button type="button" className="button button-small" onClick={handleResolve} disabled={pending}>
-        {pending ? 'En cours…' : 'Marquer comme résolu'}
+        {pending ? 'Vérification…' : 'Marquer comme résolu'}
       </button>
       {error && (
         <span className="inline-error" role="alert">

@@ -1,6 +1,6 @@
 import { formatDateTime, getAnomalyContext, getResponsibleKey } from '../lib/anomalies'
 import { jobHref } from '../lib/routes'
-import { ResponsibleTag, StatusBadge, TypeBadge } from './Badges'
+import { ResponsibleTag, StatusBadge, TypeBadge, VerificationNote } from './Badges'
 import ResolveAction from './ResolveAction'
 
 export default function AnomalyRow({ anomaly, onResolve, canResolve, showJob = true, showResponsible = true }) {
@@ -35,6 +35,7 @@ export default function AnomalyRow({ anomaly, onResolve, canResolve, showJob = t
       )}
       <td data-label="Statut">
         <StatusBadge anomaly={anomaly} />
+        <VerificationNote anomaly={anomaly} />
       </td>
       {canResolve && (
         <td data-label="Action" className="cell-action">

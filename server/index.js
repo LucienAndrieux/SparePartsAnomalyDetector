@@ -3,13 +3,14 @@ import { fileURLToPath } from 'node:url'
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
 import { createApp } from './app.js'
+import { createResolutionVerifier } from './verifyResolution.js'
 
 // Chemins résolus depuis ce fichier, pas depuis le répertoire courant :
 // un service Windows (NSSM) peut démarrer dans un autre dossier.
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 dotenv.config({ path: resolve(projectRoot, '.env'), quiet: true })
 
-const { VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env
+const { VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, N8N_VERIFY_WEBHOOK_URL, N8N_VERIFY_SECRET } = process.env
 const port = Number(process.env.PORT) || 3000
 const host = '127.0.0.1' // seul Caddy, sur la même machine, doit joindre le serveur
 
@@ -24,8 +25,18 @@ const supabase =
       })
     : null
 
+if (!N8N_VERIFY_WEBHOOK_URL || !N8N_VERIFY_SECRET) {
+  console.warn('N8N_VERIFY_WEBHOOK_URL ou N8N_VERIFY_SECRET manquant : la résolution des anomalies échouera.')
+}
+
+const verifyResolution =
+  N8N_VERIFY_WEBHOOK_URL && N8N_VERIFY_SECRET
+    ? createResolutionVerifier({ url: N8N_VERIFY_WEBHOOK_URL, secret: N8N_VERIFY_SECRET })
+    : null
+
 const app = createApp({
   supabase,
+  verifyResolution,
   distDir: resolve(projectRoot, 'dist'),
 })
 
