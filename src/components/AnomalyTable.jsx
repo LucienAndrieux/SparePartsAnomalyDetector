@@ -21,6 +21,7 @@ export default function AnomalyTable({
         <thead>
           <tr>
             {showJob && <th scope="col">Job</th>}
+            <th scope="col">Ligne</th>
             <th scope="col">Type</th>
             <th scope="col">Champ</th>
             <th scope="col">Description</th>

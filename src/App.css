@@ -2,6 +2,10 @@
    Layout
    ========================================================= */
 
+:root {
+  --topbar-height: 56px; /* aussi dans GroupDetail.jsx (TOPBAR_HEIGHT) */
+}
+
 .topbar {
   position: sticky;
   top: 0;
@@ -26,7 +30,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  height: 56px;
+  height: var(--topbar-height);
 }
 
 .brand {
@@ -805,6 +809,61 @@
   letter-spacing: -0.03em;
 }
 
+/* Rappel du titre d'une page de détail, glissé sous la barre du haut au défilement */
+.sticky-title {
+  position: fixed;
+  top: var(--topbar-height);
+  right: 0;
+  left: 0;
+  z-index: 9;
+  visibility: hidden;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 4px 12px rgb(26 31 54 / 6%);
+  opacity: 0;
+  transform: translateY(-100%);
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease,
+    visibility 0.15s;
+}
+
+.sticky-title.is-visible {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+}
+
+.sticky-title-inner {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 32px;
+}
+
+.sticky-title-text {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sticky-title-meta {
+  flex: none;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticky-title {
+    transition: none;
+  }
+}
+
 .stats-group {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
@@ -985,6 +1044,10 @@ a.responsible-tag:hover {
 
   .page-header h1 {
     font-size: 24px;
+  }
+
+  .sticky-title-inner {
+    padding: 8px 16px;
   }
 
   .stats {

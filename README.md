@@ -64,6 +64,8 @@ Colonnes alimentées par la vérification : `resolved_by` (text, acronyme à 3 l
 grant select (resolved_by, verification_status) on public.anomalies to anon, authenticated;
 ```
 
+**Ligne du Google Sheets** : la colonne générée `sheet_row` (`_row_number + 3`, lisible par `anon`) donne la ligne de la commande dans la feuille principale, dont les données commencent en ligne 5. Le dashboard l'affiche sans jamais lire `_row_number`.
+
 **Pas de doublons** : n8n ré-analyse toute une ligne du Google Sheets dès qu'elle change. Le trigger `trg_anomalies_skip_duplicate` ignore silencieusement l'insertion d'une anomalie non résolue déjà connue (même `job_id`, `_row_number`, `anomaly_type` et `field_name`, sans tenir compte de la casse), et l'index unique partiel `anomalies_unresolved_unique` sert de filet de sécurité. Une anomalie résolue qui réapparaît est bien réinsérée.
 
 ### 2. Comptes utilisateurs

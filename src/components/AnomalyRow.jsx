@@ -16,6 +16,13 @@ export default function AnomalyRow({ anomaly, onResolve, canResolve, showJob = t
           {context.length > 0 && <span className="cell-sub">{context.join(' · ')}</span>}
         </td>
       )}
+      <td data-label="Ligne" className="mono cell-muted nowrap">
+        {anomaly.sheet_row != null ? (
+          <span title={`Ligne ${anomaly.sheet_row} du Google Sheets`}>{anomaly.sheet_row}</span>
+        ) : (
+          '—'
+        )}
+      </td>
       <td data-label="Type">
         <TypeBadge type={anomaly.anomaly_type} />
       </td>
