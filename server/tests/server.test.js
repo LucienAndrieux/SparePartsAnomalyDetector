@@ -32,7 +32,7 @@ function fakeSupabase(...results) {
   const auth = {
     getUser: async (token) =>
       token === VALID_TOKEN
-        ? { data: { user: { id: 'u1', email: 'admin@example.com' } }, error: null }
+        ? { data: { user: { id: 'u1', email: 'admin@example.com', user_metadata: { display_name: 'Lucien Andrieux' } } }, error: null }
         : { data: { user: null }, error: { message: 'invalid JWT' } },
   }
   return { client: { from: () => builder, auth }, calls }
@@ -103,6 +103,7 @@ describe('POST /api/resolve-anomaly', () => {
       rowNumber: 7,
       anomalyType: 'champ_manquant',
       fieldName: 'Qty',
+      resolvedBy: 'LAN',
     })
     expect(supabase.calls).toContainEqual({ eq: ['id', 1] })
   })

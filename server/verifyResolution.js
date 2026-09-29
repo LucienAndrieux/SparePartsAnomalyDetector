@@ -2,12 +2,12 @@
  * Client du webhook n8n « Verify Anomaly Resolution ».
  *
  * n8n relit la ligne dans le Google Sheets, la fait ré-analyser par le LLM, puis écrit
- * lui-même le résultat dans Supabase (resolved, verification_status…) avant de répondre.
+ * lui-même le résultat dans Supabase (resolved, resolved_by, verification_status…) avant de répondre.
  * Renvoie { confirmed, message } ; lève une erreur si la vérification n'a pas abouti
  * (réseau, timeout, réponse inattendue).
  */
 export function createResolutionVerifier({ url, secret, timeoutMs = 60_000, fetch = globalThis.fetch }) {
-  return async function verifyResolution({ anomalyId, rowNumber, anomalyType, fieldName }) {
+  return async function verifyResolution({ anomalyId, rowNumber, anomalyType, fieldName, resolvedBy = null }) {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Verify-Secret': secret },
@@ -16,6 +16,7 @@ export function createResolutionVerifier({ url, secret, timeoutMs = 60_000, fetc
         row_number: rowNumber,
         anomaly_type: anomalyType,
         field_name: fieldName,
+        resolved_by: resolvedBy,
       }),
       signal: AbortSignal.timeout(timeoutMs),
     })

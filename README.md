@@ -36,7 +36,7 @@ Navigateur ──lecture (clé anon)──────────────�
 - **Lecture** : le navigateur utilise uniquement la clé anon. Les rôles `anon` et `authenticated` n'ont que le droit `SELECT`, et seulement sur les colonnes métier. Les colonnes techniques de n8n (`_row_number`, `_actual`) sont exclues par des `GRANT` au niveau des colonnes.
 - **Écriture** : le navigateur n'écrit jamais. Le serveur Express lit l'anomalie avec la clé `service_role` (lue dans `process.env` sans préfixe `VITE_`, donc jamais incluse dans le bundle client), et c'est le workflow n8n qui écrit le résultat de la vérification en base.
 - **Résolution vérifiée** : « Marquer comme résolu » appelle le webhook n8n *Verify Anomaly Resolution*, protégé par un secret partagé (`X-Verify-Secret`, connu seulement du serveur et de n8n). n8n relit la ligne dans le Google Sheets et la fait ré-analyser par le LLM. L'anomalie n'est marquée résolue que si elle a disparu ; sinon, ou si le LLM échoue, seul `verification_status` change (`not_corrected` ou `verification_failed`).
-- **Résolution réservée aux comptes connectés** : l'utilisateur se connecte par email et mot de passe (Supabase Auth). `POST /api/resolve-anomaly` exige son jeton de session (`Authorization: Bearer …`), que le serveur vérifie auprès de Supabase Auth avant de lancer la vérification. Chaque résolution est journalisée avec l'email de son auteur. Une IP est bloquée 15 minutes après 5 jetons invalides.
+- **Résolution réservée aux comptes connectés** : l'utilisateur se connecte par email et mot de passe (Supabase Auth). `POST /api/resolve-anomaly` exige son jeton de session (`Authorization: Bearer …`), que le serveur vérifie auprès de Supabase Auth avant de lancer la vérification. Le serveur transmet à n8n l'acronyme de l'utilisateur (`resolved_by`), tiré de son Display name, et journalise chaque résolution avec son email. Une IP est bloquée 15 minutes après 5 jetons invalides.
 - **Lecture toujours anonyme** : même connecté, le dashboard lit avec un client distinct, sans session. La session ne sert qu'à autoriser les écritures.
 - **Réseau** : le serveur n'écoute que sur `127.0.0.1`. Seul Caddy, sur la même machine, peut le joindre.
 
@@ -58,11 +58,13 @@ React 19 · Vite · Express 5 · Supabase (`@supabase/supabase-js`) · Vitest ·
 
 La table `anomalies` doit être en lecture seule pour `anon` et `authenticated` (GRANT SELECT limité aux colonnes de [`src/lib/anomalyColumns.js`](src/lib/anomalyColumns.js), RLS activée avec une policy SELECT, aucun droit d'écriture). Les écritures passent uniquement par n8n (clé service role).
 
-Colonnes alimentées par la vérification : `resolved_by` (text) et `verification_status` (text : `confirmed`, `not_corrected`, `verification_failed`). Elles doivent être lisibles par le frontend :
+Colonnes alimentées par la vérification : `resolved_by` (text, acronyme à 3 lettres de la personne qui a résolu) et `verification_status` (text : `none`, `checking`, `confirmed`, `not_corrected`, `verification_failed`, garanti par une contrainte `CHECK`). Elles doivent être lisibles par le frontend :
 
 ```sql
 grant select (resolved_by, verification_status) on public.anomalies to anon, authenticated;
 ```
+
+**Pas de doublons** : n8n ré-analyse toute une ligne du Google Sheets dès qu'elle change. Le trigger `trg_anomalies_skip_duplicate` ignore silencieusement l'insertion d'une anomalie non résolue déjà connue (même `job_id`, `_row_number`, `anomaly_type` et `field_name`, sans tenir compte de la casse), et l'index unique partiel `anomalies_unresolved_unique` sert de filet de sécurité. Une anomalie résolue qui réapparaît est bien réinsérée.
 
 ### 2. Comptes utilisateurs
 
@@ -70,6 +72,7 @@ Dans le dashboard Supabase :
 
 1. *Authentication → Sign In / Providers* : laisser **Email** activé et **désactiver « Allow new users to sign up »**. Sinon, n'importe qui peut créer un compte et résoudre des anomalies.
 2. *Authentication → Users → Add user → Create new user* : créer chaque compte habilité, en cochant **Auto Confirm User**.
+3. Renseigner le **Display name** de chaque compte (prénom et nom) : le serveur en tire l'acronyme écrit dans `resolved_by` (« Lucien Andrieux » → `LAN`, « Jean-Claude Roux » → `JCR`, voir [`server/userAcronym.js`](server/userAcronym.js)). Sans Display name, l'acronyme vient de la partie locale de l'email.
 
 ### 3. Variables d'environnement
 
@@ -142,6 +145,7 @@ server/
 ├── resolveAnomaly.js          POST /api/resolve-anomaly
 ├── verifyResolution.js        Client du webhook n8n de vérification
 ├── auth.js                    Lecture du jeton Bearer, limitation des échecs
+├── userAcronym.js             Acronyme à 3 lettres de l'utilisateur (resolved_by)
 └── tests/                     Tests du serveur (faux client Supabase)
 scripts/
 └── deploy.bat                 Déploiement sur le VPS (pull, install, build, redémarrage)

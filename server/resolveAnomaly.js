@@ -1,5 +1,6 @@
 import { ANOMALY_COLUMNS } from '../src/lib/anomalyColumns.js'
 import { createFailureLimiter, getBearerToken } from './auth.js'
+import { getUserAcronym } from './userAcronym.js'
 
 const VERIFICATION_FAILED_MESSAGE = "La vérification n'a pas pu aboutir. Réessayez dans quelques instants."
 
@@ -73,6 +74,7 @@ export function createResolveAnomalyHandler({ supabase, verifyResolution, limite
         rowNumber,
         anomalyType: anomaly.anomaly_type,
         fieldName: anomaly.field_name,
+        resolvedBy: getUserAcronym(auth.user),
       })
     } catch (verifyError) {
       console.error(`resolve-anomaly: vérification de l'anomalie ${id} impossible`, verifyError)

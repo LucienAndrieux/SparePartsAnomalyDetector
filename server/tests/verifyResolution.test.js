@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createResolutionVerifier } from '../verifyResolution.js'
 
-const REQUEST = { anomalyId: 12, rowNumber: 7, anomalyType: 'champ_manquant', fieldName: 'Qty' }
+const REQUEST = { anomalyId: 12, rowNumber: 7, anomalyType: 'champ_manquant', fieldName: 'Qty', resolvedBy: 'LAN' }
 
 /** Faux fetch : renvoie `status` et `body` (chaîne brute ou objet sérialisé). */
 function fakeFetch(status, body) {
@@ -19,7 +19,7 @@ describe('createResolutionVerifier', () => {
     expect(url).toBe('https://n8n.test/webhook/verify-anomaly')
     expect(init.method).toBe('POST')
     expect(init.headers['X-Verify-Secret']).toBe('s3cret')
-    expect(JSON.parse(init.body)).toEqual({ anomaly_id: 12, row_number: 7, anomaly_type: 'champ_manquant', field_name: 'Qty' })
+    expect(JSON.parse(init.body)).toEqual({ anomaly_id: 12, row_number: 7, anomaly_type: 'champ_manquant', field_name: 'Qty', resolved_by: 'LAN' })
     expect(init.signal).toBeInstanceOf(AbortSignal)
   })
 
